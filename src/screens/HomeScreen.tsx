@@ -116,12 +116,14 @@ export default function HomeScreen() {
       {ui.kind === 'ready' && (
         <>
           <AqiCard
-            aqi={ui.aqi}
-            category={ui.category}
-            color={ui.color}
-            subtitle={ui.subtitle}
-            note={ui.note}
-          />
+              title="Chỉ số AQI"
+              aqi={ui.aqi}
+              category={ui.category}
+              color={ui.color}
+              subtitle={ui.subtitle}
+              note={ui.note}
+            />
+
           <View style={{ height: spacing.md }} />
           <Button title="Làm mới" onPress={load} />
         </>

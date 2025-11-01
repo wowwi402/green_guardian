@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors, spacing } from '../theme';
+import AQI, * as Aqi from '../utils/aqi';
 
 type Props = {
   onBackToWelcome: () => void;

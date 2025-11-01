@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing, radius } from '../theme';
 
 type Props = {
+  title?: string;
   aqi: number;
   category: string;
   color: string;
@@ -10,15 +11,23 @@ type Props = {
   note?: string;
 };
 
-export default function AqiCard({ aqi, category, color, subtitle, note }: Props) {
+export default function AqiCard({
+  title = 'Chỉ số AQI',
+  aqi,
+  category,
+  color,
+  subtitle,
+  note,
+}: Props) {
   return (
     <View style={[styles.card, { borderColor: color }]}>
-      <Text style={styles.title}>Chỉ số AQI (demo)</Text>
+      <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
+      {/* Hàng hiển thị số AQI – PHẢI bọc trong <Text> */}
       <View style={styles.row}>
         <View style={[styles.badge, { backgroundColor: color }]} />
-        <Text style={styles.aqi}>
+        <Text style={styles.aqiText}>
           {aqi} — {category}
         </Text>
       </View>
@@ -39,6 +48,6 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.subtext, marginTop: spacing.xs },
   row: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg },
   badge: { width: 16, height: 16, borderRadius: 999, marginRight: spacing.md },
-  aqi: { color: colors.text, fontSize: 24, fontWeight: '900' },
+  aqiText: { color: colors.text, fontSize: 24, fontWeight: '900' },
   note: { color: colors.subtext, marginTop: spacing.md, lineHeight: 20 },
 });
