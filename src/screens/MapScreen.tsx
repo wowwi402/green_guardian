@@ -1,8 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, Linking } from 'react-native';
 import MapView, { Marker, Callout, Region, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../theme';
 import { useCurrentLocation } from '../hooks/useCurrentLocation';
+import { listReports, type Report } from '../services/reports';
 
 type DropPoint = {
   id: string;
@@ -12,7 +14,7 @@ type DropPoint = {
   note?: string;
 };
 
-// Tạo vài điểm thu gom rác MẪU quanh tâm (dựa vào tọa độ thật nếu có)
+// —— Điểm thu gom mẫu quanh vị trí
 function makeMockDropPoints(center: { latitude: number; longitude: number }): DropPoint[] {
   const { latitude, longitude } = center;
   const offsets = [
@@ -33,11 +35,19 @@ function makeMockDropPoints(center: { latitude: number; longitude: number }): Dr
 function openExternalMap(lat: number, lon: number, label: string) {
   const latLng = `${lat},${lon}`;
   if (Platform.OS === 'ios') {
-    const url = `maps://?q=${encodeURIComponent(label)}&ll=${latLng}`;
-    Linking.openURL(url);
+    Linking.openURL(`maps://?q=${encodeURIComponent(label)}&ll=${latLng}`);
   } else {
-    const url = `geo:0,0?q=${latLng}(${encodeURIComponent(label)})`;
-    Linking.openURL(url);
+    Linking.openURL(`geo:0,0?q=${latLng}(${encodeURIComponent(label)})`);
+  }
+}
+
+// Màu pin theo danh mục báo cáo
+function categoryColor(cat?: string) {
+  switch (cat) {
+    case 'rác':  return '#2ECC71';
+    case 'khói': return '#E67E22';
+    case 'nước': return '#3498DB';
+    default:     return '#F1C40F';
   }
 }
 
@@ -45,19 +55,25 @@ export default function MapScreen() {
   const { coords, loading, granted, request } = useCurrentLocation();
   const mapRef = useRef<MapView>(null);
 
+  const [reports, setReports] = useState<Report[]>([]);
+  const [showDrops, setShowDrops] = useState(true);
+  const [showReports, setShowReports] = useState(true);
+
   const initialRegion: Region = useMemo(() => {
-    // Nếu chưa có toạ độ, dùng vùng mặc định (TP.HCM)
-    const lat = coords?.latitude ?? 10.8231;
+    const lat = coords?.latitude ?? 10.8231;   // HCM mặc định
     const lon = coords?.longitude ?? 106.6297;
-    return {
-      latitude: lat,
-      longitude: lon,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
-    };
+    return { latitude: lat, longitude: lon, latitudeDelta: 0.05, longitudeDelta: 0.05 };
   }, [coords]);
 
   const drops = useMemo(() => makeMockDropPoints(initialRegion), [initialRegion]);
+
+  // Tải báo cáo mỗi khi vào lại tab Bản đồ
+  const loadReports = useCallback(async () => {
+    const data = await listReports();
+    setReports(data.filter(r => r.latitude != null && r.longitude != null));
+  }, []);
+
+  useFocusEffect(useCallback(() => { loadReports(); }, [loadReports]));
 
   if (loading && !coords) {
     return (
@@ -89,7 +105,7 @@ export default function MapScreen() {
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         userInterfaceStyle="dark"
       >
-        {/* Marker: vị trí của bạn */}
+        {/* Vị trí của bạn */}
         {coords && (
           <Marker
             coordinate={{ latitude: coords.latitude, longitude: coords.longitude }}
@@ -99,8 +115,8 @@ export default function MapScreen() {
           />
         )}
 
-        {/* Marker: các điểm thu gom mẫu */}
-        {drops.map((p) => (
+        {/* Điểm thu gom mẫu */}
+        {showDrops && drops.map((p) => (
           <Marker key={p.id} coordinate={{ latitude: p.lat, longitude: p.lon }}>
             <Callout onPress={() => openExternalMap(p.lat, p.lon, p.name)}>
               <View style={{ maxWidth: 200 }}>
@@ -111,9 +127,26 @@ export default function MapScreen() {
             </Callout>
           </Marker>
         ))}
+
+        {/* Marker: báo cáo đã lưu */}
+        {showReports && reports.map((r) => (
+          <Marker
+            key={r.id}
+            coordinate={{ latitude: r.latitude!, longitude: r.longitude! }}
+            pinColor={categoryColor(r.category)}
+          >
+            <Callout onPress={() => openExternalMap(r.latitude!, r.longitude!, 'Báo cáo')}>
+              <View style={{ maxWidth: 220 }}>
+                <Text style={{ fontWeight: '700' }}>{r.category.toUpperCase()}</Text>
+                <Text numberOfLines={3}>{r.description}</Text>
+                <Text style={{ color: '#007AFF', marginTop: 4 }}>Chỉ đường</Text>
+              </View>
+            </Callout>
+          </Marker>
+        ))}
       </MapView>
 
-      {/* Nút “đưa về vị trí hiện tại” */}
+      {/* Nút đưa về vị trí hiện tại */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => {
@@ -124,6 +157,16 @@ export default function MapScreen() {
       >
         <Text style={styles.fabText}>◎</Text>
       </TouchableOpacity>
+
+      {/* Bộ lọc nhanh: bật/tắt marker */}
+      <View style={styles.legend}>
+        <TouchableOpacity onPress={() => setShowDrops(s => !s)}>
+          <Text style={[styles.legendText, { opacity: showDrops ? 1 : 0.4 }]}>• Điểm thu gom</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowReports(s => !s)}>
+          <Text style={[styles.legendText, { opacity: showReports ? 1 : 0.4 }]}>• Báo cáo của tôi</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -133,22 +176,17 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   text: { color: colors.subtext },
   fab: {
-    position: 'absolute',
-    right: spacing.xl,
-    bottom: spacing.xl,
-    backgroundColor: colors.card,
-    borderColor: colors.outline,
-    borderWidth: 1.5,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: radius.xl,
+    position: 'absolute', right: spacing.xl, bottom: spacing.xl,
+    backgroundColor: colors.card, borderColor: colors.outline, borderWidth: 1.5,
+    paddingVertical: 10, paddingHorizontal: 14, borderRadius: radius.xl,
   },
   fabText: { color: colors.text, fontWeight: '900', fontSize: 16 },
-  btn: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
-  },
+  btn: { backgroundColor: colors.primary, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, borderRadius: radius.lg },
   btnText: { color: colors.bg, fontWeight: '700' },
+  legend: {
+    position: 'absolute', left: spacing.xl, bottom: spacing.xl,
+    backgroundColor: colors.card, paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: radius.lg, borderWidth: 1, borderColor: colors.outline,
+  },
+  legendText: { color: colors.text, fontWeight: '700', marginVertical: 2 },
 });
