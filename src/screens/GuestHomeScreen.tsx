@@ -8,6 +8,7 @@ type Props = {
   onBackToWelcome: () => void;
 };
 
+
 export default function GuestHomeScreen({ onBackToWelcome }: Props) {
   return (
     <View style={styles.container}>
@@ -25,6 +26,7 @@ export default function GuestHomeScreen({ onBackToWelcome }: Props) {
 }
 
 const styles = StyleSheet.create({
+  
   container: {
     flex: 1,
     backgroundColor: colors.bg,
