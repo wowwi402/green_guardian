@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, Button } from 'react-native'
 import { colors, spacing } from '../theme';
 import { useCurrentLocation } from '../hooks/useCurrentLocation';
 import AqiCard from '../components/AqiCard';
-import { overallAqiFrom, aqiToCategory, mockAqiFromCoords } from '../utils/aqi';
+import * as Aqi from '../utils/aqi';                 // << dùng namespace import
 import { fetchAirQuality } from '../services/air';
 
 type UIState =
@@ -20,14 +20,22 @@ export default function HomeScreen() {
     if (!coords) return;
     try {
       setUi({ kind: 'loading' });
-      const sample = await fetchAirQuality(coords.latitude, coords.longitude);
-      const best = overallAqiFrom({ pm25: sample.pm25, o3: sample.o3 });
-      if (!best) throw new Error('Không có số đo hợp lệ.');
-      const cat = aqiToCategory(best.aqi);
 
-      const subtitle = `Nguồn: Open-Meteo • ${new Date(sample.timeISO).toLocaleString()}` +
-        (best.pollutant === 'pm2_5' && best.pm25 != null ? ` • PM2.5: ${best.pm25.toFixed(1)} µg/m³`
-          : best.o3 != null ? ` • O₃: ${Math.round(best.o3)} µg/m³ (xấp xỉ)` : '');
+      const sample = await fetchAirQuality(coords.latitude, coords.longitude);
+
+      // Tính AQI tổng hợp từ PM2.5/O3
+      const best = Aqi.overallAqiFrom({ pm25: sample.pm25, o3: sample.o3 });
+      if (!best) throw new Error('Không có số đo hợp lệ.');
+
+      const cat = Aqi.aqiToCategory(best.aqi);
+
+      const subtitle =
+        `Nguồn: Open-Meteo • ${new Date(sample.timeISO).toLocaleString()}` +
+        (best.pollutant === 'pm2_5' && best.pm25 != null
+          ? ` • PM2.5: ${best.pm25.toFixed(1)} µg/m³`
+          : best.o3 != null
+          ? ` • O₃: ${Math.round(best.o3)} µg/m³ (xấp xỉ)`
+          : '');
 
       setUi({
         kind: 'ready',
@@ -38,6 +46,7 @@ export default function HomeScreen() {
         note: cat.advice,
       });
     } catch (e: any) {
+      console.warn('AQI load error:', e);
       setUi({ kind: 'error', message: e?.message ?? 'Lỗi lấy AQI' });
     }
   }, [coords]);
@@ -88,7 +97,10 @@ export default function HomeScreen() {
       <View style={{ height: spacing.xl }} />
 
       {ui.kind === 'loading' && (
-        <View style={styles.containerCenter}><ActivityIndicator /><Text style={styles.text}>Đang tải AQI…</Text></View>
+        <View style={styles.containerCenter}>
+          <ActivityIndicator />
+          <Text style={styles.text}>Đang tải AQI…</Text>
+        </View>
       )}
 
       {ui.kind === 'error' && (
@@ -99,9 +111,10 @@ export default function HomeScreen() {
           <View style={{ height: spacing.xl }} />
           {/* Fallback DEMO */}
           {coords && (() => {
-            const demo = mockAqiFromCoords(coords.latitude, coords.longitude);
+            const demo = Aqi.mockAqiFromCoords(coords.latitude, coords.longitude);
             return (
               <AqiCard
+                title="Chỉ số AQI"
                 aqi={demo.aqi}
                 category={`${demo.category} (DEMO)`}
                 color={demo.color}
@@ -116,14 +129,13 @@ export default function HomeScreen() {
       {ui.kind === 'ready' && (
         <>
           <AqiCard
-              title="Chỉ số AQI"
-              aqi={ui.aqi}
-              category={ui.category}
-              color={ui.color}
-              subtitle={ui.subtitle}
-              note={ui.note}
-            />
-
+            title="Chỉ số AQI"
+            aqi={ui.aqi}
+            category={ui.category}
+            color={ui.color}
+            subtitle={ui.subtitle}
+            note={ui.note}
+          />
           <View style={{ height: spacing.md }} />
           <Button title="Làm mới" onPress={load} />
         </>
