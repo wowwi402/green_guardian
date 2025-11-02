@@ -4,6 +4,8 @@ import ProfileHomeScreen from '../screens/ProfileHomeScreen';
 import ReportFormScreen from '../screens/ReportFormScreen';
 import ReportListScreen from '../screens/ReportListScreen';
 import ReportDetailScreen from '../screens/ReportDetailScreen';
+import DataManageScreen from '../screens/DataManageScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -14,6 +16,8 @@ export default function ProfileStack() {
       <Stack.Screen name="ReportForm" component={ReportFormScreen} options={{ title: 'Tạo báo cáo' }} />
       <Stack.Screen name="ReportList" component={ReportListScreen} options={{ title: 'Báo cáo của tôi' }} />
       <Stack.Screen name="ReportDetail" component={ReportDetailScreen} options={{ title: 'Chi tiết báo cáo' }} />
+      <Stack.Screen name="DataManage" component={DataManageScreen} options={{ title: 'Sao lưu / Phục hồi' }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Cài đặt' }} />
     </Stack.Navigator>
   );
 }

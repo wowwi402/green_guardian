@@ -1,59 +1,44 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors, spacing, radius } from '../theme';
-
-type Props = {
-  label: string;
-  onPress?: () => void;
-  disabled?: boolean;
-  variant?: 'filled' | 'outline';
-  style?: ViewStyle;
-};
+import { Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { spacing, radius } from '../theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 export default function PrimaryButton({
   label,
   onPress,
+  variant = 'solid',
   disabled,
-  variant = 'filled',
   style,
-}: Props) {
-  const isFilled = variant === 'filled';
+}: {
+  label: string;
+  onPress?: () => void;
+  variant?: 'solid' | 'outline';
+  disabled?: boolean;
+  style?: ViewStyle;
+}) {
+  const { colors } = useAppTheme();
+  const base = [
+    styles.btn,
+    variant === 'solid'
+      ? { backgroundColor: colors.primary, borderColor: colors.primary }
+      : { backgroundColor: 'transparent', borderColor: colors.outline },
+    disabled && { opacity: 0.6 },
+    style,
+  ];
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        styles.base,
-        isFilled ? styles.filled : styles.outline,
-        disabled && { opacity: 0.5 },
-        style,
-      ]}
-    >
-      <Text style={[styles.text, !isFilled && { color: colors.primary }]}>{label}</Text>
+    <TouchableOpacity style={base} onPress={onPress} disabled={disabled} activeOpacity={0.85}>
+      <Text style={[styles.text, { color: variant === 'solid' ? colors.bg : colors.text }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  base: {
-    paddingVertical: spacing.lg,
+  btn: {
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
+    borderWidth: 1,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  filled: {
-    backgroundColor: colors.primary,
-  },
-  outline: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: 'transparent',
-  },
-  text: {
-    color: colors.bg,
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  text: { fontWeight: '700' },
 });

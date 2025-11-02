@@ -13,6 +13,10 @@ export default function ProfileHomeScreen({ navigation }: any) {
       <PrimaryButton label="Tạo báo cáo mới" onPress={() => navigation.navigate('ReportForm')} />
       <View style={{ height: spacing.md }} />
       <PrimaryButton label="Xem báo cáo của tôi" variant="outline" onPress={() => navigation.navigate('ReportList')} />
+      <View style={{ height: spacing.md }} />
+      <PrimaryButton label="Sao lưu / Phục hồi" variant="outline" onPress={() => navigation.navigate('DataManage')} />  
+      <View style={{ height: spacing.md }} />
+      <PrimaryButton label="Cài đặt giao diện" variant="outline" onPress={() => navigation.navigate('Settings')} />
     </View>
   );
 }
