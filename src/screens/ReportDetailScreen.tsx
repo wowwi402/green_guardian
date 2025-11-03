@@ -1,64 +1,87 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, Platform, Linking, ScrollView } from 'react-native';
-import { colors, spacing, radius } from '../theme';
-import { deleteReport, Report } from '../services/reports';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, Alert, Platform, Linking } from 'react-native';
+import PrimaryButton from '../components/PrimaryButton';
+import { spacing, radius } from '../theme';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { getReport, deleteReport, type Report } from '../services/reports';
+import * as Sharing from 'expo-sharing';
 
-function openExternalMap(lat?: number, lon?: number) {
-  if (lat == null || lon == null) return;
+function openExternalMap(lat: number, lon: number, label: string) {
   const latLng = `${lat},${lon}`;
-  if (Platform.OS === 'ios') {
-    Linking.openURL(`maps://?q=${encodeURIComponent('Điểm báo cáo')}&ll=${latLng}`);
-  } else {
-    Linking.openURL(`geo:0,0?q=${latLng}(Điểm báo cáo)`);
-  }
+  if (Platform.OS === 'ios') Linking.openURL(`maps://?q=${encodeURIComponent(label)}&ll=${latLng}`);
+  else Linking.openURL(`geo:0,0?q=${latLng}(${encodeURIComponent(label)})`);
 }
 
 export default function ReportDetailScreen({ route, navigation }: any) {
-  const report = route.params.report as Report;
+  const { colors } = useAppTheme();
+  const id = route.params?.id as string;
+  const [item, setItem] = useState<Report | null>(null);
 
-  async function onDelete() {
-    Alert.alert('Xoá báo cáo?', 'Bạn có chắc muốn xoá mục này?', [
-      { text: 'Huỷ' },
-      { text: 'Xoá', style: 'destructive', onPress: async () => { await deleteReport(report.id); navigation.goBack(); } },
-    ]);
+  useEffect(() => {
+    (async () => {
+      const r = await getReport(id);
+      setItem(r ?? null);
+    })();
+  }, [id]);
+
+  if (!item) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+        <Text style={{ color: colors.text, padding: spacing.xl }}>Không tìm thấy báo cáo.</Text>
+      </View>
+    );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
-      <Image source={{ uri: report.photoUri }} style={styles.photo} />
-      <View style={{ height: spacing.lg }} />
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <Image source={{ uri: item.photoUri }} style={styles.image} />
+      <View style={{ padding: spacing.xl }}>
+        <Text style={[styles.title, { color: colors.text }]}>{item.description}</Text>
+        <Text style={{ color: colors.subtext, marginTop: 4 }}>
+          {item.category.toUpperCase()} · {new Date(item.createdAt).toLocaleString()}
+        </Text>
 
-      <Text style={styles.title}>{report.category.toUpperCase()}</Text>
-      <Text style={styles.meta}>{new Date(report.createdAt).toLocaleString()}</Text>
+        <View style={{ height: spacing.xl }} />
+        <PrimaryButton label="Chia sẻ ảnh" onPress={async () => {
+          if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(item.photoUri);
+          else Alert.alert('Thiết bị không hỗ trợ chia sẻ.');
+        }} />
 
-      <View style={{ height: spacing.md }} />
-      <Text style={styles.desc}>{report.description}</Text>
+        {item.latitude != null && item.longitude != null && (
+          <>
+            <View style={{ height: spacing.md }} />
+            <PrimaryButton label="Chỉ đường" variant="outline" onPress={() => openExternalMap(item.latitude!, item.longitude!, 'Báo cáo')} />
+          </>
+        )}
 
-      <View style={{ height: spacing.md }} />
-      {report.latitude != null && report.longitude != null ? (
-        <>
-          <Text style={styles.meta}>Vị trí: {report.latitude.toFixed(5)}, {report.longitude.toFixed(5)}</Text>
-          <View style={{ height: spacing.sm }} />
-          <TouchableOpacity style={styles.btn} onPress={() => openExternalMap(report.latitude, report.longitude)}>
-            <Text style={styles.btnText}>Mở chỉ đường</Text>
-          </TouchableOpacity>
-        </>
-      ) : null}
+        <View style={{ height: spacing.md }} />
+        <PrimaryButton label="Sửa báo cáo" variant="outline" onPress={() => navigation.navigate('ReportForm', { editId: item.id })} />
 
-      <View style={{ height: spacing.lg }} />
-      <TouchableOpacity style={[styles.btn, { backgroundColor: '#E74C3C' }]} onPress={onDelete}>
-        <Text style={[styles.btnText, { color: 'white' }]}>Xoá báo cáo</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={{ height: spacing.md }} />
+        <PrimaryButton
+          label="Xoá báo cáo"
+          variant="outline"
+          onPress={() =>
+            Alert.alert('Xoá?', 'Bạn có chắc muốn xoá báo cáo này?', [
+              { text: 'Huỷ' },
+              {
+                text: 'Xoá',
+                style: 'destructive',
+                onPress: async () => {
+                  await deleteReport(item.id);
+                  navigation.goBack();
+                },
+              },
+            ])
+          }
+        />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.xl },
-  photo: { width: '100%', height: 260, borderRadius: radius.lg, backgroundColor: colors.card },
-  title: { color: colors.text, fontSize: 20, fontWeight: '800' },
-  meta: { color: colors.subtext, marginTop: 2 },
-  desc: { color: colors.subtext, lineHeight: 20 },
-  btn: { backgroundColor: colors.primary, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, alignSelf: 'flex-start', borderRadius: radius.lg },
-  btnText: { color: colors.bg, fontWeight: '700' },
+  container: { flex: 1 },
+  image: { width: '100%', height: 260, resizeMode: 'cover' },
+  title: { fontSize: 20, fontWeight: '800' },
 });

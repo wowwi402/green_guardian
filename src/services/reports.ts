@@ -142,3 +142,32 @@ export async function importReportsFromFile(pickedUri: string): Promise<{ added:
   await saveReports(merged);
   return { added, total: merged.length };
 }
+
+export async function updateReport(
+  id: string,
+  patch: Partial<Pick<Report, 'description' | 'category' | 'latitude' | 'longitude'>> & {
+    photoUri?: string; // nếu muốn thay ảnh
+  }
+): Promise<Report> {
+  const list = await listReports();
+  const idx = list.findIndex(r => r.id === id);
+  if (idx < 0) throw new Error('Không tìm thấy báo cáo');
+
+  let updated: Report = { ...list[idx], ...patch };
+
+  if (patch.photoUri && patch.photoUri !== list[idx].photoUri) {
+    // copy ảnh mới vào thư mục app và xoá ảnh cũ
+    const extMatch = patch.photoUri.match(/\.(\w+)(?:\?|$)/);
+    const ext = (extMatch?.[1] ?? 'jpg').toLowerCase();
+    const dest = `${DIR}${id}.${ext}`;
+
+    await ensureDir();
+    await FileSystem.copyAsync({ from: patch.photoUri, to: dest });
+    try { await FileSystem.deleteAsync(list[idx].photoUri, { idempotent: true }); } catch {}
+    updated.photoUri = dest;
+  }
+
+  list[idx] = updated;
+  await saveReports(list);
+  return updated;
+}

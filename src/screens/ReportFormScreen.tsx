@@ -1,139 +1,128 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TextInput, Alert, Image, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { colors, spacing, radius } from '../theme';
 import PrimaryButton from '../components/PrimaryButton';
+import { spacing, radius } from '../theme';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { CATEGORIES, type Category, createReport, updateReport, getReport } from '../services/reports';
 import { useCurrentLocation } from '../hooks/useCurrentLocation';
-import { CATEGORIES, Category, createReport } from '../services/reports';
 
-export default function ReportFormScreen({ navigation }: any) {
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [desc, setDesc] = useState('');
-  const [cat, setCat] = useState<Category>('rác');
-  const [saving, setSaving] = useState(false);
-  const { coords, loading: locLoading, request } = useCurrentLocation();
+type Props = { navigation: any; route: { params?: { editId?: string } } };
 
-  async function pickFromLibrary() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Thiếu quyền', 'Hãy cho phép truy cập thư viện ảnh.'); return; }
+export default function ReportFormScreen({ navigation, route }: Props) {
+  const { colors } = useAppTheme();
+  const { coords, request } = useCurrentLocation();
+
+  const editId = route.params?.editId;
+  const isEdit = Boolean(editId);
+
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<Category>('rác');
+  const [busy, setBusy] = useState(false);
+
+  // Prefill nếu sửa
+  useEffect(() => {
+    (async () => {
+      if (!editId) return;
+      const r = await getReport(editId);
+      if (r) {
+        setPhotoUri(r.photoUri);
+        setDescription(r.description);
+        setCategory(r.category);
+      }
+    })();
+  }, [editId]);
+
+  async function pickImage() {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!res.canceled) setImageUri(res.assets[0].uri);
-  }
-
-  async function captureFromCamera() {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Thiếu quyền', 'Hãy cho phép sử dụng camera.'); return; }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (!res.canceled) setImageUri(res.assets[0].uri);
+    if (!res.canceled) setPhotoUri(res.assets[0].uri);
   }
 
   async function onSave() {
-    if (!imageUri) { Alert.alert('Thiếu ảnh', 'Vui lòng chụp hoặc chọn một ảnh.'); return; }
-    if (desc.trim().length < 5) { Alert.alert('Mô tả quá ngắn', 'Vui lòng nhập tối thiểu 5 ký tự.'); return; }
-
     try {
-      setSaving(true);
-      const report = await createReport(
-        {
-          description: desc.trim(),
-          category: cat,
+      if (!photoUri) return Alert.alert('Thiếu ảnh', 'Hãy chọn hoặc chụp một ảnh.');
+      setBusy(true);
+
+      if (isEdit && editId) {
+        await updateReport(editId, {
+          description,
+          category,
           latitude: coords?.latitude,
           longitude: coords?.longitude,
-        },
-        imageUri
-      );
-      setSaving(false);
-      Alert.alert('Đã lưu', 'Báo cáo đã được lưu trong máy.', [
-        { text: 'Xem danh sách', onPress: () => navigation.replace('ReportList') },
-        { text: 'OK' },
-      ]);
+          photoUri: photoUri, // nếu khác ảnh cũ sẽ tự copy thay
+        });
+      } else {
+        await createReport(
+          {
+            description,
+            category,
+            latitude: coords?.latitude,
+            longitude: coords?.longitude,
+          },
+          photoUri
+        );
+      }
+
+      setBusy(false);
+      navigation.goBack();
     } catch (e: any) {
-      setSaving(false);
-      Alert.alert('Lỗi', e?.message ?? 'Không lưu được báo cáo.');
+      setBusy(false);
+      Alert.alert('Lỗi lưu báo cáo', e?.message ?? 'Không lưu được báo cáo');
     }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
-      <Text style={styles.title}>Tạo báo cáo mới</Text>
-      <Text style={styles.sub}>Đính kèm ảnh + vị trí hiện tại + mô tả ngắn.</Text>
+    <ScrollView style={[styles.container, { backgroundColor: colors.bg }]}>
+      <Text style={[styles.title, { color: colors.text }]}>{isEdit ? 'Sửa báo cáo' : 'Tạo báo cáo'}</Text>
 
-      <View style={{ height: spacing.lg }} />
-
-      {/* Ảnh */}
-      {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.photo} />
+      <PrimaryButton label="Chọn ảnh từ thư viện" variant="outline" onPress={pickImage} />
+      <View style={{ height: spacing.md }} />
+      {photoUri ? (
+        <Image source={{ uri: photoUri }} style={styles.preview} />
       ) : (
-        <View style={[styles.photo, styles.photoPlaceholder]}>
-          <Text style={{ color: colors.subtext }}>Chưa có ảnh</Text>
-        </View>
+        <Text style={{ color: colors.subtext }}>(Chưa có ảnh)</Text>
       )}
-      <View style={{ height: spacing.sm }} />
-      <View style={{ flexDirection: 'row' }}>
-        <PrimaryButton label="Chụp ảnh" onPress={captureFromCamera} style={{ flex: 1, marginRight: spacing.sm }} />
-        <PrimaryButton label="Chọn ảnh" variant="outline" onPress={pickFromLibrary} style={{ flex: 1, marginLeft: spacing.sm }} />
-      </View>
 
-      <View style={{ height: spacing.lg }} />
+      <View style={{ height: spacing.xl }} />
+      <Text style={[styles.label, { color: colors.text }]}>Mô tả</Text>
+      <TextInput
+        value={description}
+        onChangeText={setDescription}
+        placeholder="Nhập mô tả ngắn…"
+        placeholderTextColor={colors.subtext}
+        style={[styles.input, { color: colors.text, borderColor: colors.outline }]}
+        multiline
+      />
 
-      {/* Danh mục */}
-      <Text style={styles.label}>Danh mục</Text>
+      <View style={{ height: spacing.xl }} />
+      <Text style={[styles.label, { color: colors.text }]}>Danh mục</Text>
       <View style={styles.catRow}>
         {CATEGORIES.map((c) => (
-          <TouchableOpacity key={c} style={[styles.cat, cat === c && styles.catActive]} onPress={() => setCat(c)}>
-            <Text style={[styles.catText, cat === c && { color: colors.bg }]}>{c.toUpperCase()}</Text>
-          </TouchableOpacity>
+          <PrimaryButton
+            key={c}
+            label={c.toUpperCase()}
+            variant={c === category ? 'solid' : 'outline'}
+            onPress={() => setCategory(c)}
+            style={{ marginRight: spacing.sm }}
+          />
         ))}
       </View>
 
-      <View style={{ height: spacing.lg }} />
-
-      {/* Mô tả */}
-      <Text style={styles.label}>Mô tả</Text>
-      <TextInput
-        placeholder="Ví dụ: Đống rác tự phát cạnh số nhà 12, có mùi hôi nặng…"
-        placeholderTextColor={colors.subtext}
-        value={desc}
-        onChangeText={setDesc}
-        multiline
-        style={styles.input}
-      />
-
-      <View style={{ height: spacing.lg }} />
-
-      {/* Tọa độ */}
-      <Text style={styles.label}>Vị trí hiện tại</Text>
-      {locLoading && !coords ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <ActivityIndicator />
-          <Text style={{ color: colors.subtext, marginLeft: 8 }}>Đang lấy vị trí…</Text>
-        </View>
-      ) : (
-        <Text style={styles.coords}>
-          {coords ? `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}` : 'Chưa có vị trí — nhấn lấy lại'}
-        </Text>
-      )}
-      <View style={{ height: spacing.sm }} />
-      <PrimaryButton label="Lấy lại vị trí" variant="outline" onPress={request} />
-
       <View style={{ height: spacing.xl }} />
-
-      <PrimaryButton label={saving ? 'Đang lưu...' : 'Lưu báo cáo'} onPress={onSave} disabled={saving} />
+      <PrimaryButton label={busy ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : 'Lưu báo cáo'} onPress={onSave} disabled={busy} />
+      <View style={{ height: spacing.md }} />
+      <PrimaryButton label="Lấy lại vị trí" variant="outline" onPress={request} />
+      <View style={{ height: spacing.xl }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.xl },
-  title: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  sub: { color: colors.subtext, marginTop: spacing.xs },
-  photo: { width: '100%', height: 220, borderRadius: radius.lg, backgroundColor: colors.card },
-  photoPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.outline },
-  label: { color: colors.text, fontWeight: '700', marginBottom: 6 },
-  input: { minHeight: 90, borderWidth: 1, borderColor: colors.outline, borderRadius: 12, padding: 12, color: colors.text, backgroundColor: colors.card, textAlignVertical: 'top' },
-  coords: { color: colors.subtext },
+  container: { flex: 1, padding: spacing.xl },
+  title: { fontSize: 22, fontWeight: '800', marginBottom: spacing.md },
+  label: { fontWeight: '700', marginBottom: spacing.sm },
+  input: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, minHeight: 80 },
+  preview: { width: '100%', height: 220, borderRadius: radius.lg, marginTop: spacing.sm, resizeMode: 'cover' },
   catRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  cat: { paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.outline, borderRadius: 999, marginRight: 8, marginTop: 8 },
-  catActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  catText: { color: colors.subtext, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
 });

@@ -1,51 +1,70 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Alert } from 'react-native';
+import { spacing, radius } from '../theme';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { listReports, deleteReport, type Report } from '../services/reports';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, radius } from '../theme';
-import { listReports, Report } from '../services/reports';
 
 export default function ReportListScreen({ navigation }: any) {
-  const [items, setItems] = useState<Report[]>([]);
+  const { colors } = useAppTheme();
+  const [items, setItems] = React.useState<Report[]>([]);
 
-  const load = useCallback(async () => {
+  const load = React.useCallback(async () => {
     const data = await listReports();
     setItems(data);
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(React.useCallback(() => { load(); }, [load]));
+
+  function onLongPress(item: Report) {
+    Alert.alert('Tuỳ chọn', 'Bạn muốn làm gì với báo cáo này?', [
+      { text: 'Huỷ' },
+      { text: 'Sửa', onPress: () => navigation.navigate('ReportForm', { editId: item.id }) },
+      {
+        text: 'Xoá',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteReport(item.id);
+          load();
+        },
+      },
+    ]);
+  }
+
+  const renderItem = ({ item }: { item: Report }) => (
+    <TouchableOpacity
+      onPress={() => navigation.navigate('ReportDetail', { id: item.id })}
+      onLongPress={() => onLongPress(item)}
+      activeOpacity={0.8}
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}
+    >
+      <Image source={{ uri: item.photoUri }} style={styles.thumb} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{item.description}</Text>
+        <Text style={{ color: colors.subtext, marginTop: 4 }}>
+          {item.category.toUpperCase()} · {new Date(item.createdAt).toLocaleString()}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <View style={styles.container}>
-      {items.length === 0 ? (
-        <Text style={styles.empty}>Chưa có báo cáo nào. Vào “Hồ sơ → Tạo báo cáo mới”.</Text>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(it) => it.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={() => navigation.navigate('ReportDetail', { report: item })}>
-              <Image source={{ uri: item.photoUri }} style={styles.thumb} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.title}>{item.category.toUpperCase()}</Text>
-                <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
-                <Text style={styles.meta}>{new Date(item.createdAt).toLocaleString()}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-          contentContainerStyle={{ paddingBottom: spacing.xxl }}
-        />
-      )}
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <FlatList
+        data={items}
+        keyExtractor={(it) => it.id}
+        renderItem={renderItem}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+        contentContainerStyle={{ padding: spacing.xl }}
+        ListEmptyComponent={<Text style={{ color: colors.subtext, textAlign: 'center', marginTop: spacing.xl }}>Chưa có báo cáo nào.</Text>}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.xl },
-  empty: { color: colors.subtext, textAlign: 'center', marginTop: spacing.xl },
-  card: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.outline },
-  thumb: { width: 84, height: 84, borderRadius: radius.md, marginRight: spacing.md },
-  title: { color: colors.text, fontWeight: '800' },
-  desc: { color: colors.subtext, marginTop: 4 },
-  meta: { color: colors.subtext, fontSize: 12, marginTop: 6 },
+  container: { flex: 1 },
+  card: { flexDirection: 'row', padding: spacing.md, borderRadius: radius.lg, borderWidth: 1, alignItems: 'center' },
+  thumb: { width: 64, height: 64, borderRadius: radius.md, marginRight: spacing.md, backgroundColor: '#0003' },
+  title: { fontWeight: '700' },
 });

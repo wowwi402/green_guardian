@@ -1,32 +1,16 @@
-import React from 'react';
-import { NavigationContainer, DarkTheme, Theme } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
-import RootNavigator from './src/navigation/RootNavigator';
-import { colors } from './src/theme';
+import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider } from './src/theme/ThemeProvider';
-import Tabs from './src/navigation/Tabs';
-
-const navTheme: Theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: colors.bg,
-    card: colors.card,
-    primary: colors.primary,
-    text: colors.text,
-    border: colors.outline,
-    notification: colors.primary,
-  },
-};
+import { AuthProvider } from './src/auth/AuthProvider';
+import RootNavigator from './src/navigation/RootNavigator';
 
 export default function App() {
   return (
-  <ThemeProvider>
-    <NavigationContainer theme={navTheme}>
-      <Tabs />
-      <StatusBar style="light" />
-      <RootNavigator />
-    </NavigationContainer>
-  </ThemeProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
