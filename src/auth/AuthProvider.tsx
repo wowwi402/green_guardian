@@ -1,51 +1,36 @@
 // src/auth/AuthProvider.tsx
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import type { User } from 'firebase/auth';
+import { listenAuth, signInEmail, signUpEmail, signOutAll } from '../services/auth';
 
-type Mode = 'none' | 'guest' | 'user';
 type Ctx = {
-  mode: Mode;
+  user: User | null;
   loading: boolean;
-  continueAsGuest: () => Promise<void>;
-  signInMock: () => Promise<void>;   // demo
+  signIn: (email: string, pw: string) => Promise<void>;
+  signUp: (email: string, pw: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
-const KEY = 'auth:mode';
 const AuthCtx = createContext<Ctx | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<Mode>('none');   
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(KEY);
-        if (raw === 'guest' || raw === 'user') setMode(raw);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    const unsub = listenAuth(u => { setUser(u); setLoading(false); });
+    return unsub;
   }, []);
 
-  const continueAsGuest = async () => {
-    await AsyncStorage.setItem(KEY, 'guest');
-    setMode('guest');
-  };
+  const signIn = async (email: string, pw: string) => { await signInEmail(email, pw); };
+  const signUp = async (email: string, pw: string, name?: string) => { await signUpEmail(email, pw, name); };
+  const signOut = async () => { await signOutAll(); };
 
-  const signInMock = async () => {
-    await AsyncStorage.setItem(KEY, 'user');
-    setMode('user');
-  };
-
-  const signOut = async () => {
-    await AsyncStorage.setItem(KEY, 'none');
-    setMode('none');
-  };
-
-  const value = useMemo(() => ({ mode, loading, continueAsGuest, signInMock, signOut }), [mode, loading]);
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
+  return (
+    <AuthCtx.Provider value={{ user, loading, signIn, signUp, signOut }}>
+      {children}
+    </AuthCtx.Provider>
+  );
 }
 
 export function useAuth() {

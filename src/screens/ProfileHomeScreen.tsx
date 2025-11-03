@@ -1,36 +1,32 @@
-// src/screens/ProfileHomeScreen.tsx
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import PrimaryButton from '../components/PrimaryButton';
-import { spacing } from '../theme';
-import { useAppTheme } from '../theme/ThemeProvider';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { spacing, radius } from '../theme';
 
-export default function ProfileHomeScreen({ navigation }: any) {
+export default function ProfileHomeScreen() {
+  const { user, signOut } = useAuth();
   const { colors } = useAppTheme();
-  const { signOut, mode } = useAuth(); // ✅ gọi hook BÊN TRONG component
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.title, { color: colors.text }]}>Hồ sơ</Text>
+    <View style={[styles.box, { backgroundColor: colors.bg }]}>
+      <Text style={[styles.h1, { color: colors.text }]}>
+        Xin chào{user?.displayName ? `, ${user.displayName}` : ''}!
+      </Text>
       <Text style={{ color: colors.subtext, marginBottom: spacing.xl }}>
-        Trạng thái: {mode === 'guest' ? 'Khách' : mode === 'user' ? 'Đã đăng nhập' : 'Chưa chọn'}
+        {user?.email}
       </Text>
 
-      <PrimaryButton label="Tạo báo cáo" onPress={() => navigation.navigate('ReportForm')} />
-      <View style={{ height: spacing.md }} />
-      <PrimaryButton label="Báo cáo của tôi" variant="outline" onPress={() => navigation.navigate('ReportList')} />
-      <View style={{ height: spacing.md }} />
-      <PrimaryButton label="Sao lưu / Phục hồi" variant="outline" onPress={() => navigation.navigate('DataManage')} />
-      <View style={{ height: spacing.md }} />
-      <PrimaryButton label="Cài đặt giao diện" variant="outline" onPress={() => navigation.navigate('Settings')} />
-      <View style={{ height: spacing.xl }} />
-      <PrimaryButton label="Đăng xuất" variant="outline" onPress={signOut} />
+      <TouchableOpacity style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.outline }]}
+        onPress={signOut}>
+        <Text style={{ color: colors.text, fontWeight: '700' }}>Đăng xuất</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: spacing.xl },
-  title: { fontSize: 22, fontWeight: '800', marginBottom: spacing.md },
+  box: { flex: 1, padding: spacing.xl },
+  h1: { fontSize: 22, fontWeight: '900', marginBottom: spacing.sm },
+  btn: { borderWidth: 1, borderRadius: radius.xl, paddingVertical: 12, alignItems: 'center' },
 });

@@ -1,23 +1,28 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useAuth } from '../auth/AuthProvider';
+import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 import ProfileHomeScreen from '../screens/ProfileHomeScreen';
-import ReportFormScreen from '../screens/ReportFormScreen';
-import ReportListScreen from '../screens/ReportListScreen';
-import ReportDetailScreen from '../screens/ReportDetailScreen';
-import DataManageScreen from '../screens/DataManageScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function ProfileStack() {
+  const { user } = useAuth();
+
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="ProfileHome" component={ProfileHomeScreen} options={{ title: 'Hồ sơ' }} />
-      <Stack.Screen name="ReportForm" component={ReportFormScreen} options={{ title: 'Tạo báo cáo' }} />
-      <Stack.Screen name="ReportList" component={ReportListScreen} options={{ title: 'Báo cáo của tôi' }} />
-      <Stack.Screen name="ReportDetail" component={ReportDetailScreen} options={{ title: 'Chi tiết báo cáo' }} />
-      <Stack.Screen name="DataManage" component={DataManageScreen} options={{ title: 'Sao lưu / Phục hồi' }} />
-      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Cài đặt' }} />
+    <Stack.Navigator screenOptions={{ headerTitleStyle: { fontWeight: '800' } }}>
+      {user ? (
+        <>
+          <Stack.Screen name="ProfileHome" component={ProfileHomeScreen} options={{ title: 'Hồ sơ' }} />
+          {/* thêm màn khác trong hồ sơ nếu có */}
+        </>
+      ) : (
+        <>
+          <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Đăng nhập' }} />
+          <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Đăng ký' }} />
+        </>
+      )}
     </Stack.Navigator>
   );
 }
