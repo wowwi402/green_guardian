@@ -6,24 +6,40 @@ type ThemeSettings = { mode: ThemeMode; primary: string };
 
 const KEY = 'theme:settings';
 
-const DARK_BASE = {
-  bg: '#0B0B0B',
-  card: '#151515',
-  text: '#FFFFFF',
-  subtext: '#A6A6A6',
-  outline: '#2E2E2E',
-};
+/** Bảng màu semantic (đã tối ưu contrast) */
 const LIGHT_BASE = {
-  bg: '#FFFFFF',
-  card: '#F7F7F7',
-  text: '#0B0B0B',
-  subtext: '#5B5B5B',
-  outline: '#D7D7D7',
+  // nền sáng, hơi xanh lá rất nhẹ
+  bg: '#F6FAF7',
+  surface: '#F9FBF8',
+  card: '#FFFFFF',
+  text: '#0B3D2E',     // xanh rêu đậm
+  subtext: '#667085',  // xám-trung tính
+  outline: '#E6EDE8',
+};
+const DARK_BASE = {
+  bg: '#0C1A12',
+  surface: '#0F2418',
+  card: '#0F2418',
+  text: '#EAF6EF',
+  subtext: '#AAC7B7',
+  outline: '#1E3A2C',
 };
 
 function buildColors(settings: ThemeSettings) {
   const base = settings.mode === 'dark' ? DARK_BASE : LIGHT_BASE;
-  return { ...base, primary: settings.primary };
+  const primary = settings.primary; // ví dụ: #16A34A
+  const onPrimary = settings.mode === 'dark' ? '#0C1A12' : '#FFFFFF';
+
+  return {
+    ...base,
+    primary,
+    onPrimary,
+    // thêm vài màu tiện dụng
+    success: '#16A34A',
+    warning: '#F59E0B',
+    danger:  '#E11D48',
+    info:    '#0EA5E9',
+  };
 }
 
 type Ctx = {
@@ -37,7 +53,8 @@ type Ctx = {
 const ThemeCtx = createContext<Ctx | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<ThemeSettings>({ mode: 'dark', primary: '#62E39A' });
+  // 👉 chuyển mặc định sang LIGHT + primary xanh lá hiện đại
+  const [settings, setSettings] = useState<ThemeSettings>({ mode: 'light', primary: '#16A34A' });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

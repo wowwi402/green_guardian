@@ -14,11 +14,18 @@ export default function Tabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.text,
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.outline },
+        headerStyle: { backgroundColor: colors.surface },
+        headerTitleStyle: { color: colors.text, fontWeight: '800' },
+        headerShadowVisible: false,
+
+        tabBarStyle: {
+          backgroundColor: colors.card,
+          borderTopColor: colors.outline,
+          height: 60,
+        },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.subtext,
+        tabBarLabelStyle: { fontWeight: '700' },
       }}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Trang chủ' }} />

@@ -3,11 +3,11 @@ import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { spacing, radius } from '../theme';
 import { useAppTheme } from '../theme/ThemeProvider';
 
-const PALETTE = ['#62E39A', '#4CC9F0', '#FFB703', '#F25F5C', '#8E44AD', '#27AE60', '#E67E22'];
+const PALETTE = ['#16A34A', '#22C55E', '#10B981', '#0EA5E9', '#F59E0B', '#8E44AD'];
 
 export default function SettingsScreen() {
   const { settings, colors, setMode, setPrimary } = useAppTheme();
-
+  
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <Text style={[styles.section, { color: colors.text }]}>Chế độ giao diện</Text>

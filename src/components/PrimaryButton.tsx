@@ -21,13 +21,14 @@ export default function PrimaryButton({
     styles.btn,
     variant === 'solid'
       ? { backgroundColor: colors.primary, borderColor: colors.primary }
-      : { backgroundColor: 'transparent', borderColor: colors.outline },
+      : { backgroundColor: colors.card, borderColor: colors.outline },
     disabled && { opacity: 0.6 },
     style,
   ];
+
   return (
     <TouchableOpacity style={base} onPress={onPress} disabled={disabled} activeOpacity={0.85}>
-      <Text style={[styles.text, { color: variant === 'solid' ? colors.bg : colors.text }]}>{label}</Text>
+      <Text style={[styles.text, { color: variant === 'solid' ? colors.onPrimary : colors.text }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -36,9 +37,15 @@ const styles = StyleSheet.create({
   btn: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     alignItems: 'center',
+    // shadow nhẹ (iOS) / elevation (Android)
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  text: { fontWeight: '700' },
+  text: { fontWeight: '700', letterSpacing: 0.2 },
 });
