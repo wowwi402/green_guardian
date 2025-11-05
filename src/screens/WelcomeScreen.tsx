@@ -5,22 +5,24 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthProvider';
 import { colors, spacing, radius } from '../theme';
 
+
 const ONBOARDED_KEY = 'gg:onboarded:v1';
 
 export default function WelcomeScreen() {
-  const nav = useNavigation<any>();
+  
   const { signInGuest } = useAuth();
+  const navigation = useNavigation<any>();
 
   const goLogin = async () => {
-    await AsyncStorage.setItem(ONBOARDED_KEY, '1');
-    nav.reset({ index: 0, routes: [{ name: 'AuthFlow' }] });
-  };
+  await AsyncStorage.setItem(ONBOARDED_KEY, '1');
+  navigation.reset({ index: 0, routes: [{ name: 'AuthFlow' }] });
+};
 
-  const goGuest = async () => {
-    await signInGuest();
-    await AsyncStorage.setItem(ONBOARDED_KEY, '1');
-    nav.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-  };
+const goGuest = async () => {
+  await signInGuest();
+  await AsyncStorage.setItem(ONBOARDED_KEY, '1');
+  navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+};
 
   return (
     <View style={[styles.wrap]}>

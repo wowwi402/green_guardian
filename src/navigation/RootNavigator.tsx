@@ -25,16 +25,29 @@ function AuthStack() {
 export default function RootNavigator() {
   const { user, loading, isGuest } = useAuth();
   const { colors } = useAppTheme();
-  const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  const [initial, setInitial] = useState<'Welcome' | 'AuthFlow' | 'MainTabs' | null>(null);
 
   useEffect(() => {
     (async () => {
       const v = await AsyncStorage.getItem(ONBOARDED_KEY);
-      setShowWelcome(v !== '1'); // chưa xem onboarding => true
+      setOnboarded(v === '1');
     })();
   }, []);
 
-  if (loading || showWelcome === null) {
+  // Quyết định route mở đầu
+  useEffect(() => {
+    if (onboarded === null) return;
+    if (!onboarded) {
+      setInitial('Welcome');
+    } else if (user || isGuest) {
+      setInitial('MainTabs');
+    } else {
+      setInitial('AuthFlow');
+    }
+  }, [onboarded, user, isGuest]);
+
+  if (loading || onboarded === null || initial === null) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator />
@@ -43,14 +56,11 @@ export default function RootNavigator() {
   }
 
   return (
-    <Root.Navigator screenOptions={{ headerShown: false }}>
-      {showWelcome ? (
-        <Root.Screen name="Welcome" component={WelcomeScreen} />
-      ) : user || isGuest ? (
-        <Root.Screen name="MainTabs" component={Tabs} />
-      ) : (
-        <Root.Screen name="AuthFlow" component={AuthStack} />
-      )}
+    <Root.Navigator screenOptions={{ headerShown: false }} initialRouteName={initial}>
+      {/* Luôn đăng ký đủ 3 screen */}
+      <Root.Screen name="Welcome" component={WelcomeScreen} />
+      <Root.Screen name="AuthFlow" component={AuthStack} />
+      <Root.Screen name="MainTabs" component={Tabs} />
     </Root.Navigator>
   );
 }
