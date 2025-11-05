@@ -1,33 +1,83 @@
 // src/auth/AuthProvider.tsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { User } from 'firebase/auth';
-import { listenAuth, signInEmail, signUpEmail, signOutAll } from '../services/auth';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  PropsWithChildren,
+} from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onAuthStateChanged, signOut as fbSignOut, User } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
-type Ctx = {
+type AuthContextShape = {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, pw: string) => Promise<void>;
-  signUp: (email: string, pw: string, name?: string) => Promise<void>;
+  isGuest: boolean;
+  signInGuest: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
-const AuthCtx = createContext<Ctx | null>(null);
+const AuthCtx = createContext<AuthContextShape | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+// Lưu trạng thái khách trên máy
+const GUEST_KEY = 'gg:guest:v1';
+
+export function AuthProvider({ children }: PropsWithChildren<{}>) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestLoaded, setGuestLoaded] = useState(false);
 
+  // Load cờ "khách" từ AsyncStorage
   useEffect(() => {
-    const unsub = listenAuth(u => { setUser(u); setLoading(false); });
-    return unsub;
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(GUEST_KEY);
+        setIsGuest(v === '1');
+      } finally {
+        setGuestLoaded(true);
+      }
+    })();
   }, []);
 
-  const signIn = async (email: string, pw: string) => { await signInEmail(email, pw); };
-  const signUp = async (email: string, pw: string, name?: string) => { await signUpEmail(email, pw, name); };
-  const signOut = async () => { await signOutAll(); };
+  // Lắng nghe trạng thái Firebase Auth
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+      // Nếu đã đăng nhập thật → tắt chế độ khách
+      if (u && isGuest) {
+        setIsGuest(false);
+        AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
+      }
+    });
+    return () => unsub();
+  }, [isGuest]);
+
+  const signInGuest = async () => {
+    setIsGuest(true);
+    await AsyncStorage.setItem(GUEST_KEY, '1');
+  };
+
+  const signOut = async () => {
+    try {
+      await fbSignOut(auth); // nếu đang ở guest thì lệnh này không ảnh hưởng
+    } catch {
+      // ignore
+    }
+    setIsGuest(false);
+    await AsyncStorage.removeItem(GUEST_KEY);
+    setUser(null);
+  };
+
+  // Chờ tải xong cờ guest + auth init
+  const initializing = loading || !guestLoaded;
 
   return (
-    <AuthCtx.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthCtx.Provider
+      value={{ user, loading: initializing, isGuest, signInGuest, signOut }}
+    >
       {children}
     </AuthCtx.Provider>
   );

@@ -1,15 +1,17 @@
-// src/navigation/RootNavigator.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Tabs from './Tabs'; // tabs Home/Map/Knowledge/Profile đang có
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Tabs from './Tabs';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import WelcomeScreen from '../screens/WelcomeScreen';
 import { useAuth } from '../auth/AuthProvider';
 import { View, ActivityIndicator } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
 
 const Root = createNativeStackNavigator();
 const Auth = createNativeStackNavigator();
+const ONBOARDED_KEY = 'gg:onboarded:v1';
 
 function AuthStack() {
   return (
@@ -21,12 +23,20 @@ function AuthStack() {
 }
 
 export default function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest } = useAuth();
   const { colors } = useAppTheme();
+  const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
 
-  if (loading) {
+  useEffect(() => {
+    (async () => {
+      const v = await AsyncStorage.getItem(ONBOARDED_KEY);
+      setShowWelcome(v !== '1'); // chưa xem onboarding => true
+    })();
+  }, []);
+
+  if (loading || showWelcome === null) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator />
       </View>
     );
@@ -34,11 +44,11 @@ export default function RootNavigator() {
 
   return (
     <Root.Navigator screenOptions={{ headerShown: false }}>
-      {user ? (
-        // ĐÃ đăng nhập → vào app chính (Tabs)
+      {showWelcome ? (
+        <Root.Screen name="Welcome" component={WelcomeScreen} />
+      ) : user || isGuest ? (
         <Root.Screen name="MainTabs" component={Tabs} />
       ) : (
-        // CHƯA đăng nhập → vào flow đăng nhập/đăng ký
         <Root.Screen name="AuthFlow" component={AuthStack} />
       )}
     </Root.Navigator>
