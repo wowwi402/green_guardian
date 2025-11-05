@@ -1,30 +1,37 @@
 {
   "expo": {
-    "name": "green-guardian",
-    "slug": "green-guardian",
+    "name": "Green Guardian",
+    "slug": "green_guardian",
+    "scheme": "greenguardian",
     "version": "1.0.0",
     "orientation": "portrait",
+
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#EAF6EF"
     },
+
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yourname.greenguardian",
+      "infoPlist": {
+        "UIStatusBarStyle": "UIStatusBarStyleDarkContent"
+      }
     },
+
     "android": {
+      "package": "com.yourname.greenguardian",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#EAF6EF"
+      }
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+
+    "plugins": [],
+    "updates": { "fallbackToCacheTimeout": 0 },
+    "assetBundlePatterns": ["**/*"]
   }
 }
