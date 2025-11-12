@@ -1,90 +1,73 @@
-// src/auth/AuthProvider.tsx
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  PropsWithChildren,
-} from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { onAuthStateChanged, signOut as fbSignOut, User } from 'firebase/auth';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
 import { auth } from '../services/firebase';
 
-type AuthContextShape = {
-  user: User | null;
+export type AppUser = { uid: string; email: string | null } | null;
+
+type AuthCtx = {
+  user: AppUser;
   loading: boolean;
-  isGuest: boolean;
-  signInGuest: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signOutApp: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  signInMock: () => void; // dùng thử nhanh
 };
 
-const AuthCtx = createContext<AuthContextShape | null>(null);
+const Ctx = createContext<AuthCtx | null>(null);
 
-// Lưu trạng thái khách trên máy
-const GUEST_KEY = 'gg:guest:v1';
-
-export function AuthProvider({ children }: PropsWithChildren<{}>) {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AppUser>(null);
   const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
-  const [guestLoaded, setGuestLoaded] = useState(false);
 
-  // Load cờ "khách" từ AsyncStorage
-  useEffect(() => {
-    (async () => {
-      try {
-        const v = await AsyncStorage.getItem(GUEST_KEY);
-        setIsGuest(v === '1');
-      } finally {
-        setGuestLoaded(true);
-      }
-    })();
-  }, []);
-
-  // Lắng nghe trạng thái Firebase Auth
+  // theo dõi trạng thái đăng nhập thực tế
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+      setUser(u ? { uid: u.uid, email: u.email } : null);
       setLoading(false);
-      // Nếu đã đăng nhập thật → tắt chế độ khách
-      if (u && isGuest) {
-        setIsGuest(false);
-        AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
-      }
     });
-    return () => unsub();
-  }, [isGuest]);
+    return unsub;
+  }, []);
 
-  const signInGuest = async () => {
-    setIsGuest(true);
-    await AsyncStorage.setItem(GUEST_KEY, '1');
+  const signIn = async (email: string, password: string) => {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    setUser({ uid: cred.user.uid, email: cred.user.email });
   };
 
-  const signOut = async () => {
-    try {
-      await fbSignOut(auth); // nếu đang ở guest thì lệnh này không ảnh hưởng
-    } catch {
-      // ignore
-    }
-    setIsGuest(false);
-    await AsyncStorage.removeItem(GUEST_KEY);
+  const signUp = async (email: string, password: string) => {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    setUser({ uid: cred.user.uid, email: cred.user.email });
+  };
+
+  const signOutApp = async () => {
+    await signOut(auth);
     setUser(null);
   };
 
-  // Chờ tải xong cờ guest + auth init
-  const initializing = loading || !guestLoaded;
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
 
-  return (
-    <AuthCtx.Provider
-      value={{ user, loading: initializing, isGuest, signInGuest, signOut }}
-    >
-      {children}
-    </AuthCtx.Provider>
+  const signInMock = () => {
+    setUser({ uid: 'demo', email: 'demo@example.com' });
+  };
+
+  const value = useMemo(
+    () => ({ user, loading, signIn, signUp, signOutApp, resetPassword, signInMock }),
+    [user, loading]
   );
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthCtx);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error('useAuth must be used within <AuthProvider>');
   return ctx;
 }

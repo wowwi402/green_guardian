@@ -1,57 +1,64 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { spacing, radius } from '../../theme';
-import { useAppTheme } from '../../theme/ThemeProvider';
-import { useAuth } from '../../auth/AuthProvider';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../services/firebase';
+import { colors, spacing, radius } from '../../theme';
+import { useNavigation } from '@react-navigation/native';
+
+const mapAuthError = (code?: string) => {
+  switch (code) {
+    case 'auth/operation-not-allowed': return 'Hãy bật Email/Password trong Firebase → Authentication → Sign-in method.';
+    case 'auth/email-already-in-use': return 'Email đã được sử dụng.';
+    case 'auth/invalid-email': return 'Email không hợp lệ.';
+    case 'auth/weak-password': return 'Mật khẩu quá yếu (≥ 6 ký tự).';
+    default: return `Lỗi: ${code ?? 'không xác định'}`;
+  }
+};
 
 export default function RegisterScreen() {
-  const { colors } = useAppTheme();
-  const { signUp } = useAuth();
-  const [name, setName] = useState('');
+  const navigation = useNavigation<any>();
   const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const onRegister = async () => {
     try {
-      if (pw.length < 6) return Alert.alert('Mật khẩu tối thiểu 6 ký tự');
-      setBusy(true);
-      await signUp(email, pw, name);
-      Alert.alert('Thành công', 'Tài khoản đã được tạo.');
+      setLoading(true);
+      await createUserWithEmailAndPassword(auth, email.trim(), password);
+      Alert.alert('Thành công', 'Tạo tài khoản thành công. Bạn có thể đăng nhập ngay.');
+      navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Đăng ký thất bại', e?.message ?? '');
+      Alert.alert('Đăng ký thất bại', mapAuthError(e?.code));
+      console.log('Register error:', e);
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
   return (
-    <View style={[styles.box, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.h1, { color: colors.text }]}>Tạo tài khoản</Text>
+    <View style={styles.wrap}>
+      <Text style={styles.title}>Đăng ký</Text>
 
-      <View style={[styles.input, { borderColor: colors.outline, backgroundColor: colors.card }]}>
-        <TextInput placeholder="Tên hiển thị" value={name} onChangeText={setName}
-          style={{ color: colors.text }} placeholderTextColor={colors.subtext} />
-      </View>
-      <View style={[styles.input, { borderColor: colors.outline, backgroundColor: colors.card }]}>
-        <TextInput placeholder="Email" autoCapitalize="none" keyboardType="email-address"
-          value={email} onChangeText={setEmail} style={{ color: colors.text }} placeholderTextColor={colors.subtext} />
-      </View>
-      <View style={[styles.input, { borderColor: colors.outline, backgroundColor: colors.card }]}>
-        <TextInput placeholder="Mật khẩu" secureTextEntry value={pw} onChangeText={setPw}
-          style={{ color: colors.text }} placeholderTextColor={colors.subtext} />
-      </View>
+      <TextInput value={email} onChangeText={setEmail} placeholder="Email"
+        autoCapitalize="none" keyboardType="email-address" style={styles.input} />
+      <TextInput value={password} onChangeText={setPassword} placeholder="Mật khẩu"
+        secureTextEntry style={styles.input} />
 
-      <TouchableOpacity style={[styles.btn, { backgroundColor: colors.primary }]} onPress={onRegister} disabled={busy}>
-        <Text style={{ color: colors.onPrimary, fontWeight: '800' }}>{busy ? 'Đang xử lý…' : 'Đăng ký'}</Text>
+      <TouchableOpacity style={[styles.btn, loading && { opacity: 0.6 }]} onPress={onRegister} disabled={loading}>
+        <Text style={styles.btnTxt}>{loading ? 'Đang tạo…' : 'Đăng ký'}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  box: { flex: 1, padding: spacing.xl, justifyContent: 'center' },
-  h1: { fontSize: 24, fontWeight: '900', marginBottom: spacing.lg },
-  input: { borderWidth: 1, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: 10, marginBottom: spacing.md },
-  btn: { alignItems: 'center', paddingVertical: 12, borderRadius: radius.xl },
+  wrap: { flex: 1, backgroundColor: colors.bg, padding: spacing.xl, justifyContent: 'center' },
+  title: { fontSize: 24, fontWeight: '900', color: colors.text, marginBottom: spacing.lg },
+  input: {
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.outline,
+    borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: 12,
+    color: colors.text, marginBottom: spacing.md
+  },
+  btn: { backgroundColor: colors.primary, borderRadius: radius.xl, alignItems: 'center', paddingVertical: 14 },
+  btnTxt: { color: colors.onPrimary, fontWeight: '800' },
 });
