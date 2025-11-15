@@ -43,8 +43,10 @@ export default function RootNavigator() {
     <Root.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
         <>
-          <Root.Screen name="MainTabs" component={Tabs} />
-          <Root.Screen name="Reports" component={ReportsStack} />
+          <>
+            <Root.Screen name="MainTabs" component={Tabs} />
+            <Root.Screen name="Reports" component={ReportsStack} />
+          </>
         </>
       ) : (
         <>
