@@ -6,12 +6,14 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import Tabs from './Tabs';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import ReportsStack from './ReportsStack';
 import { useAuth } from '../auth/AuthProvider';
 
 export type RootStackParamList = {
   Welcome: undefined;
   AuthFlow: undefined;
   MainTabs: undefined;
+  Reports: undefined;
 };
 
 const Root = createNativeStackNavigator<RootStackParamList>();
@@ -40,10 +42,11 @@ export default function RootNavigator() {
   return (
     <Root.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
-        // ĐÃ đăng nhập -> vào app chính
-        <Root.Screen name="MainTabs" component={Tabs} />
+        <>
+          <Root.Screen name="MainTabs" component={Tabs} />
+          <Root.Screen name="Reports" component={ReportsStack} />
+        </>
       ) : (
-        // CHƯA đăng nhập -> Welcome + AuthFlow
         <>
           <Root.Screen name="Welcome" component={WelcomeScreen} />
           <Root.Screen name="AuthFlow" component={AuthFlow} />

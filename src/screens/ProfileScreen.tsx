@@ -8,36 +8,38 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
 import {
   sendEmailVerification,
   updateProfile,
   updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  signOut,
 } from 'firebase/auth';
 
-import { auth } from '../services/firebase';          // <— đúng với src/screens -> src/services
-import { listReports } from '../services/reports';     // <— đúng đường dẫn
+import { auth } from '../services/firebase';
+import { listReports } from '../services/reports';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { spacing, radius } from '../theme';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../auth/AuthProvider';
 
-// Tạo bảng màu cảnh báo/nguy hiểm có Fallback, tránh phụ thuộc vào theme
+// Bảng màu cảnh báo/nguy hiểm có fallback – không phụ thuộc theme mở rộng
 const useLocalPalette = (colors: any) => ({
-  warnBg:  colors?.warnBg  ?? '#FEF3C7', // amber-100
-  warn:    colors?.warn    ?? '#F59E0B', // amber-500
-  warnText:colors?.warnText?? '#92400E', // amber-800
-  onWarn:  colors?.onWarn  ?? '#111827', // gray-900
-  danger:  colors?.danger  ?? '#EF4444', // red-500
-  onDanger:colors?.onDanger?? '#FFFFFF', // white
+  warnBg:   colors?.warnBg    ?? '#FEF3C7', // amber-100
+  warn:     colors?.warn      ?? '#F59E0B', // amber-500
+  warnText: colors?.warnText  ?? '#92400E', // amber-800
+  onWarn:   colors?.onWarn    ?? '#111827', // gray-900
+  danger:   colors?.danger    ?? '#EF4444', // red-500
+  onDanger: colors?.onDanger  ?? '#FFFFFF', // white
 });
 
 export default function ProfileScreen() {
   const { colors } = useAppTheme();
   const p = useLocalPalette(colors);
   const nav = useNavigation<any>();
+  const { signOutApp } = useAuth();
+
+  // Đọc trực tiếp currentUser để có displayName/emailVerified
   const user = auth.currentUser;
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
@@ -81,7 +83,6 @@ export default function ProfileScreen() {
       Alert.alert('Đã gửi email xác minh', 'Vui lòng kiểm tra hộp thư của bạn.');
     } catch (e: any) {
       Alert.alert('Gửi xác minh thất bại', e?.message ?? 'Có lỗi xảy ra.');
-      console.log('sendEmailVerification error', e);
     } finally {
       setVerifySending(false);
     }
@@ -99,7 +100,6 @@ export default function ProfileScreen() {
       Alert.alert('Đã lưu', 'Tên hiển thị đã được cập nhật.');
     } catch (e: any) {
       Alert.alert('Lưu thất bại', e?.message ?? 'Có lỗi xảy ra.');
-      console.log('updateProfile error', e);
     } finally {
       setSavingName(false);
     }
@@ -125,25 +125,21 @@ export default function ProfileScreen() {
       Alert.alert('Thành công', 'Mật khẩu đã được đổi.');
     } catch (e: any) {
       Alert.alert('Đổi mật khẩu thất bại', e?.message ?? 'Có lỗi xảy ra.');
-      console.log('change password error', e);
     } finally {
       setChangingPw(false);
     }
   };
 
   const onSignOut = async () => {
-    try {
-      await signOut(auth);
-      nav.reset({ index: 0, routes: [{ name: 'AuthFlow' }] });
-    } catch (e: any) {
-      Alert.alert('Đăng xuất thất bại', e?.message ?? 'Có lỗi xảy ra.');
-    }
+    // dùng context để đồng bộ trạng thái user ở RootNavigator
+    await signOutApp();
+    nav.reset({ index: 0, routes: [{ name: 'AuthFlow' }] });
   };
 
-  const bgColor = (colors as any).bgSoft || colors.bg;  
+  const bgColor = (colors as any).bgSoft || colors.bg;
 
   return (
-    <ScrollView style={[styles.wrap, { backgroundColor: bgColor }]} >
+    <ScrollView style={[styles.wrap, { backgroundColor: bgColor }]}>
       {/* Card: tài khoản */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}>
         <Text style={[styles.h1, { color: colors.text }]}>{greeting}</Text>
@@ -232,10 +228,10 @@ export default function ProfileScreen() {
               ]}
             />
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <View style={{ flexDirection: 'row' }}>
               <TouchableOpacity
                 onPress={() => { setPwOpen(false); setCurrentPw(''); setNewPw(''); }}
-                style={[styles.btnGhost, { borderColor: colors.outline }]}
+                style={[styles.btnGhost, { borderColor: colors.outline, marginRight: spacing.sm }]}
               >
                 <Text style={{ color: colors.text, fontWeight: '800' }}>Huỷ</Text>
               </TouchableOpacity>
@@ -291,7 +287,6 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: radius.lg,
@@ -337,7 +332,7 @@ const styles = StyleSheet.create({
   btnSm: { borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: 8 },
   btnSmText: { fontWeight: '800' },
   btnPrimaryText: { fontWeight: '800' },
-  kpiRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
-  kpi: { flex: 1, borderRadius: radius.lg, padding: spacing.md },
+  kpiRow: { flexDirection: 'row', marginTop: spacing.sm },
+  kpi: { flex: 1, borderRadius: radius.lg, padding: spacing.md, marginRight: spacing.sm },
   kpiValue: { fontSize: 22, fontWeight: '900', marginBottom: 2 },
 });
