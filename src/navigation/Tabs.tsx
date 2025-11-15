@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import HomeScreen from '../screens/HomeScreen';
 import MapScreen from '../screens/MapScreen';
-import KnowledgeScreen from '../screens/KnowledgeScreen'; // hoặc KnowledgeListScreen tuỳ bạn
+import KnowledgeScreen from '../screens/KnowledgeScreen'; 
 import ProfileScreen from '../screens/ProfileScreen';
 
 import { useAppTheme } from '../theme/ThemeProvider';
@@ -25,7 +25,7 @@ export default function Tabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerStyle: { backgroundColor: colors.bgSoft },          // <— thay surface bằng bgSoft
+        headerStyle: { backgroundColor: colors.bgSoft },          
         headerTitleStyle: { color: colors.text, fontWeight: '800' },
         headerTintColor: colors.text,
         headerShadowVisible: false,
