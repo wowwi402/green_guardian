@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Button } from 'react-native';
-import { spacing } from '../theme';                 // ⚠️ giữ spacing tĩnh
-import { useAppTheme } from '../theme/ThemeProvider'; // ✅ lấy colors động
+import { spacing } from '../theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 import { useCurrentLocation } from '../hooks/useCurrentLocation';
 import AqiCard from '../components/AqiCard';
 import * as Aqi from '../utils/aqi';
 import { fetchAirQuality } from '../services/air';
+import Fab from '../components/Fab';
+import { useNavigation } from '@react-navigation/native';
 
 type UIState =
   | { kind: 'idle' }
@@ -14,7 +16,8 @@ type UIState =
   | { kind: 'ready'; subtitle: string; aqi: number; color: string; category: string; note: string };
 
 export default function HomeScreen() {
-  const { colors } = useAppTheme();   // 🎯 màu theo Cài đặt
+  const { colors } = useAppTheme();
+  const nav = useNavigation<any>();
   const { granted, loading: locLoading, error: locError, coords, request } = useCurrentLocation();
   const [ui, setUi] = useState<UIState>({ kind: 'idle' });
 
@@ -53,7 +56,7 @@ export default function HomeScreen() {
     if (coords) load();
   }, [coords, load]);
 
-  // --- UI quyết định ---
+  // Guards vị trí
   if (locLoading && !coords) {
     return (
       <View style={[styles.containerCenter, { backgroundColor: colors.bg }]}>
@@ -62,7 +65,6 @@ export default function HomeScreen() {
       </View>
     );
   }
-
   if (granted === false) {
     return (
       <View style={[styles.containerCenter, { backgroundColor: colors.bg }]}>
@@ -72,7 +74,6 @@ export default function HomeScreen() {
       </View>
     );
   }
-
   if (locError) {
     return (
       <View style={[styles.containerCenter, { backgroundColor: colors.bg }]}>
@@ -85,7 +86,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.title, { color: colors.text }]}>Trang chủ (Guest)</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Trang chủ</Text>
 
       {coords && (
         <Text style={[styles.text, { color: colors.subtext }]}>
@@ -110,7 +111,6 @@ export default function HomeScreen() {
           <View style={{ height: spacing.md }} />
           <Button title="Thử tải lại" onPress={load} color={colors.primary} />
           <View style={{ height: spacing.xl }} />
-          {/* Fallback DEMO */}
           {coords && (() => {
             const demo = Aqi.mockAqiFromCoords(coords.latitude, coords.longitude);
             return (
@@ -141,12 +141,14 @@ export default function HomeScreen() {
           <Button title="Làm mới" onPress={load} color={colors.primary} />
         </>
       )}
+
+      {/* Nút nổi tạo báo cáo */}
+      <Fab onPress={() => nav.navigate('Reports' as never, { screen: 'ReportCreate' } as never)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // ❗ Không set màu cố định ở đây — màu sẽ truyền bằng inline theo colors động
   container: { flex: 1, padding: spacing.xl },
   containerCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 22, fontWeight: '800', marginBottom: spacing.md },

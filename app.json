@@ -5,32 +5,39 @@
     "scheme": "greenguardian",
     "version": "1.0.0",
     "orientation": "portrait",
-
     "icon": "./assets/icon.png",
-
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#EAF6EF"
     },
-
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.yourname.greenguardian",
       "infoPlist": {
-        "UIStatusBarStyle": "UIStatusBarStyleDarkContent"
+        "UIStatusBarStyle": "UIStatusBarStyleDarkContent",
+        "NSCameraUsageDescription": "Ứng dụng cần dùng camera để chụp ảnh báo cáo.",
+        "NSPhotoLibraryUsageDescription": "Ứng dụng cần truy cập thư viện ảnh để chọn ảnh báo cáo.",
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần vị trí để gắn tọa độ cho báo cáo."
       }
     },
-
     "android": {
       "package": "com.yourname.greenguardian",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#EAF6EF"
-      }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
+      ]
     },
-
-    "plugins": [],
+    "plugins": [
+      "expo-location",
+      "expo-image-picker"
+    ],
     "updates": { "fallbackToCacheTimeout": 0 },
     "assetBundlePatterns": ["**/*"]
   }

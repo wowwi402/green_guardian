@@ -1,3 +1,4 @@
+// src/navigation/RootNavigator.tsx
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,14 +7,16 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import Tabs from './Tabs';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
-import ReportsStack from './ReportsStack';
 import { useAuth } from '../auth/AuthProvider';
+import ReportsStack from './ReportsStack';
+import KnowledgeDetailScreen from '../screens/KnowledgeDetailScreen';
 
 export type RootStackParamList = {
   Welcome: undefined;
   AuthFlow: undefined;
   MainTabs: undefined;
   Reports: undefined;
+  KnowledgeDetail: { id: string };
 };
 
 const Root = createNativeStackNavigator<RootStackParamList>();
@@ -43,10 +46,14 @@ export default function RootNavigator() {
     <Root.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
         <>
-          <>
-            <Root.Screen name="MainTabs" component={Tabs} />
-            <Root.Screen name="Reports" component={ReportsStack} />
-          </>
+          <Root.Screen name="MainTabs" component={Tabs} />
+          <Root.Screen name="Reports" component={ReportsStack} />
+          {/* Chi tiết Kiến thức: BẬT header riêng */}
+          <Root.Screen
+            name="KnowledgeDetail"
+            component={KnowledgeDetailScreen}
+            options={{ headerShown: true, title: 'Bài viết' }}
+          />
         </>
       ) : (
         <>

@@ -1,7 +1,8 @@
 {
   "name": "green-guardian",
   "version": "1.0.0",
-  "main": "index.ts",
+  "private": true,
+  "main": "expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -21,7 +22,6 @@
     "expo-file-system": "~19.0.17",
     "expo-image-picker": "~17.0.8",
     "expo-location": "~19.0.7",
-    "expo-sharing": "~14.0.7",
     "expo-status-bar": "~3.0.8",
     "firebase": "^12.5.0",
     "react": "19.1.0",
@@ -40,6 +40,5 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "typescript": "~5.9.2"
-  },
-  "private": true
+  }
 }

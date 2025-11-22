@@ -1,4 +1,3 @@
-// src/screens/MapScreen.tsx
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ActivityIndicator, TouchableOpacity,
@@ -6,7 +5,7 @@ import {
 } from 'react-native';
 import MapView, { Marker, Callout, Region, PROVIDER_GOOGLE } from 'react-native-maps';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { spacing, radius } from '../theme';
 import { useAppTheme } from '../theme/ThemeProvider';
@@ -15,6 +14,7 @@ import { listReports, type Report } from '../services/reports';
 import { DROP_POINTS_HCM, type DropPoint } from '../data/drop_points';
 import { haversineKm, formatKm } from '../utils/geo';
 import MAP_STYLE_CLEAN from '../theme/mapStyle';
+import Fab from '../components/Fab';
 
 // ====== Helpers ======
 type MockPoint = { id: string; name: string; lat: number; lon: number; note?: string };
@@ -33,13 +33,24 @@ function openExternalMap(lat: number, lon: number, label: string) {
   else Linking.openURL(`geo:0,0?q=${latLng}(${encodeURIComponent(label)})`);
 }
 function catColor(cat?: string) {
-  switch (cat) { case 'rác': return '#16A34A'; case 'khói': return '#F59E0B'; case 'nước': return '#0EA5E9'; default: return '#F59E0B'; }
+  switch (cat) {
+    case 'rác': return '#16A34A';
+    case 'khói': return '#F59E0B';
+    case 'nước': return '#0EA5E9';
+    default: return '#F59E0B';
+  }
 }
 function pointColor(p: DropPoint) {
-  switch (p.type) { case 'recycle': return '#16A34A'; case 'hazard': return '#E11D48'; case 'e-waste': return '#8B5CF6'; case 'organic': return '#22C55E'; }
+  switch (p.type) {
+    case 'recycle': return '#16A34A';
+    case 'hazard': return '#E11D48';
+    case 'e-waste': return '#8B5CF6';
+    case 'organic': return '#22C55E';
+    default: return '#16A34A'; // ✅ thêm default để không lỗi TS
+  }
 }
 
-// ====== Small UI atoms (Chip / ChipSwitch) ======
+// ====== Small atoms ======
 function Chip({ icon, label, active, onPress }: { icon: any; label: string; active?: boolean; onPress?: () => void }) {
   const { colors } = useAppTheme();
   return (
@@ -72,24 +83,24 @@ type ListItem =
 
 export default function MapScreen() {
   const { colors } = useAppTheme();
+  const nav = useNavigation<any>();
   const { coords, loading, granted, request } = useCurrentLocation();
   const mapRef = useRef<MapView>(null);
 
-  // Lớp hiển thị
+  // Layers
   const [showMock, setShowMock] = useState(true);
   const [showReal, setShowReal] = useState(true);
   const [showReports, setShowReports] = useState(true);
 
-  // Tìm kiếm / lọc / sort
+  // Filter / sort
   const [query, setQuery] = useState('');
   const [nearOnly, setNearOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'distance' | 'name'>('distance');
   const RADIUS_KM = 3;
 
-  // Popover Lớp
   const [showLayers, setShowLayers] = useState(false);
 
-  // Báo cáo
+  // Reports
   const [reports, setReports] = useState<Report[]>([]);
   const loadReports = useCallback(async () => {
     const data = await listReports();
@@ -97,7 +108,7 @@ export default function MapScreen() {
   }, []);
   useFocusEffect(useCallback(() => { loadReports(); }, [loadReports]));
 
-  // Region/map style
+  // Region
   const initialRegion: Region = useMemo(() => {
     const lat = coords?.latitude ?? 10.8231;
     const lon = coords?.longitude ?? 106.6297;
@@ -121,7 +132,7 @@ export default function MapScreen() {
     return nameOk && within(r.latitude!, r.longitude!);
   }) : [], [showReports, reports, q, nearOnly, coords]);
 
-  // BottomSheet (mở sẵn)
+  // BottomSheet
   const [sheetOpen, setSheetOpen] = useState(true);
   const sheetAnim = useRef(new Animated.Value(1)).current; // 1 = open
   const toggleSheet = () => {
@@ -131,7 +142,6 @@ export default function MapScreen() {
   };
   const sheetTranslate = sheetAnim.interpolate({ inputRange: [0, 1], outputRange: [220, 0] });
 
-  // Hợp nhất items cho list
   const sheetItems: ListItem[] = useMemo(() => {
     const dist = (lat: number, lon: number) => coords ? haversineKm(coords, { latitude: lat, longitude: lon }) : undefined;
     const items: ListItem[] = [];
@@ -268,7 +278,7 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Recenter FAB */}
+      {/* Recenter button */}
       <TouchableOpacity style={[styles.fab, { backgroundColor: colors.card, borderColor: colors.outline }]}
         onPress={() => {
           const lat = coords?.latitude ?? initialRegion.latitude;
@@ -278,23 +288,36 @@ export default function MapScreen() {
         <Ionicons name="locate" size={18} color={colors.text} />
       </TouchableOpacity>
 
-      {/* ===== BottomSheet list ===== */}
+      {/* FAB tạo báo cáo */}
+      <Fab onPress={() => nav.navigate('Reports' as never, { screen: 'ReportCreate' } as never)} />
+      {/* BottomSheet list */}
       <Animated.View style={[
         styles.sheet,
         { backgroundColor: colors.card, borderColor: colors.outline, transform: [{ translateY: sheetTranslate }] }
       ]}>
         <TouchableOpacity style={styles.sheetHeader} onPress={toggleSheet} activeOpacity={0.9}>
           <View style={styles.sheetGrabber} />
-          <Text style={{ fontWeight: '800', color: colors.text }}>Danh sách ({sheetItems.length}) — {sortBy === 'distance' ? 'Gần nhất' : 'Tên A→Z'}</Text>
+          <Text style={{ fontWeight: '800', color: colors.text }}>
+            Danh sách ({sheetItems.length}) — {sortBy === 'distance' ? 'Gần nhất' : 'Tên A→Z'}
+          </Text>
         </TouchableOpacity>
 
         <View style={{ maxHeight: 220, paddingHorizontal: spacing.md }}>
           {sheetItems.length === 0 ? (
-            <Text style={{ color: colors.subtext, textAlign: 'center', paddingVertical: spacing.lg }}>Không có điểm nào khớp bộ lọc.</Text>
+            <Text style={{ color: colors.subtext, textAlign: 'center', paddingVertical: spacing.lg }}>
+              Không có điểm nào khớp bộ lọc.
+            </Text>
           ) : (
             sheetItems.map((it) => (
-              <TouchableOpacity key={it.id} style={[styles.rowItem, { borderColor: colors.outline }]}
-                onPress={() => mapRef.current?.animateToRegion({ latitude: it.lat, longitude: it.lon, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500)}
+              <TouchableOpacity
+                key={it.id}
+                style={[styles.rowItem, { borderColor: colors.outline }]}
+                onPress={() =>
+                  mapRef.current?.animateToRegion(
+                    { latitude: it.lat, longitude: it.lon, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+                    500
+                  )
+                }
                 onLongPress={() => openExternalMap(it.lat, it.lon, it.name)}
               >
                 <View style={[styles.bullet, { backgroundColor: it.kind === 'real' ? '#16A34A' : it.kind === 'report' ? '#F59E0B' : '#9CA3AF' }]} />
@@ -314,7 +337,6 @@ export default function MapScreen() {
   );
 }
 
-// Row for popover
 function Row({ label, dot, children }: { label: string; dot: string; children: React.ReactNode }) {
   const { colors } = useAppTheme();
   return (
@@ -354,10 +376,10 @@ const styles = StyleSheet.create({
   layerRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, minWidth: 220 },
   dot: { width: 10, height: 10, borderRadius: 99, marginRight: 8 },
 
-  // Recenter
+  // Recenter button
   fab: {
     position: 'absolute', right: spacing.xl, bottom: spacing.xl + 230,
-    borderWidth: 1.5, paddingVertical: 10, paddingHorizontal: 12,
+    borderWidth: 1.5, paddingVertical: 10, paddingHorizontal: spacing.md,
     borderRadius: radius.xl, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 4 }, elevation: 2,
   },
 
@@ -372,6 +394,5 @@ const styles = StyleSheet.create({
   rowItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   bullet: { width: 8, height: 8, borderRadius: 99, marginRight: spacing.md },
 
-  // Reuse button
   btn: { paddingVertical: 10, paddingHorizontal: spacing.md, borderRadius: radius.lg, alignItems: 'center' },
 });

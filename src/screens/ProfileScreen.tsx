@@ -8,12 +8,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+
 import {
   sendEmailVerification,
   updateProfile,
   updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
+  signOut,
 } from 'firebase/auth';
 
 import { auth } from '../services/firebase';
@@ -21,25 +23,31 @@ import { listReports } from '../services/reports';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { spacing, radius } from '../theme';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../auth/AuthProvider';
 
-// Bảng màu cảnh báo/nguy hiểm có fallback – không phụ thuộc theme mở rộng
+// Bảng màu cảnh báo/nguy hiểm (fallback độc lập theme)
 const useLocalPalette = (colors: any) => ({
-  warnBg:   colors?.warnBg    ?? '#FEF3C7', // amber-100
-  warn:     colors?.warn      ?? '#F59E0B', // amber-500
-  warnText: colors?.warnText  ?? '#92400E', // amber-800
-  onWarn:   colors?.onWarn    ?? '#111827', // gray-900
-  danger:   colors?.danger    ?? '#EF4444', // red-500
-  onDanger: colors?.onDanger  ?? '#FFFFFF', // white
+  warnBg:  colors?.warnBg  ?? '#FEF3C7', // amber-100
+  warn:    colors?.warn    ?? '#F59E0B', // amber-500
+  warnText:colors?.warnText?? '#92400E', // amber-800
+  onWarn:  colors?.onWarn  ?? '#111827', // gray-900
+  danger:  colors?.danger  ?? '#EF4444', // red-500
+  onDanger:colors?.onDanger?? '#FFFFFF', // white
 });
 
+// Màu chủ đạo gợi ý
+const PRIMARY_PRESETS = [
+  { hex: '#16A34A', name: 'Green' },
+  { hex: '#0EA5E9', name: 'Sky' },
+  { hex: '#8B5CF6', name: 'Violet' },
+  { hex: '#F59E0B', name: 'Amber' },
+  { hex: '#E11D48', name: 'Rose' },
+  { hex: '#0D9488', name: 'Teal' },
+];
+
 export default function ProfileScreen() {
-  const { colors } = useAppTheme();
+  const { colors, settings, setMode, setPrimary } = useAppTheme();
   const p = useLocalPalette(colors);
   const nav = useNavigation<any>();
-  const { signOutApp } = useAuth();
-
-  // Đọc trực tiếp currentUser để có displayName/emailVerified
   const user = auth.currentUser;
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
@@ -83,6 +91,7 @@ export default function ProfileScreen() {
       Alert.alert('Đã gửi email xác minh', 'Vui lòng kiểm tra hộp thư của bạn.');
     } catch (e: any) {
       Alert.alert('Gửi xác minh thất bại', e?.message ?? 'Có lỗi xảy ra.');
+      console.log('sendEmailVerification error', e);
     } finally {
       setVerifySending(false);
     }
@@ -100,6 +109,7 @@ export default function ProfileScreen() {
       Alert.alert('Đã lưu', 'Tên hiển thị đã được cập nhật.');
     } catch (e: any) {
       Alert.alert('Lưu thất bại', e?.message ?? 'Có lỗi xảy ra.');
+      console.log('updateProfile error', e);
     } finally {
       setSavingName(false);
     }
@@ -125,21 +135,26 @@ export default function ProfileScreen() {
       Alert.alert('Thành công', 'Mật khẩu đã được đổi.');
     } catch (e: any) {
       Alert.alert('Đổi mật khẩu thất bại', e?.message ?? 'Có lỗi xảy ra.');
+      console.log('change password error', e);
     } finally {
       setChangingPw(false);
     }
   };
 
   const onSignOut = async () => {
-    // dùng context để đồng bộ trạng thái user ở RootNavigator
-    await signOutApp();
-    nav.reset({ index: 0, routes: [{ name: 'AuthFlow' }] });
+    try {
+      await signOut(auth);
+      nav.reset({ index: 0, routes: [{ name: 'AuthFlow' }] });
+    } catch (e: any) {
+      Alert.alert('Đăng xuất thất bại', e?.message ?? 'Có lỗi xảy ra.');
+    }
   };
 
   const bgColor = (colors as any).bgSoft || colors.bg;
 
   return (
     <ScrollView style={[styles.wrap, { backgroundColor: bgColor }]}>
+
       {/* Card: tài khoản */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}>
         <Text style={[styles.h1, { color: colors.text }]}>{greeting}</Text>
@@ -161,7 +176,65 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* Card: cá nhân */}
+      {/* Card: GIAO DIỆN (mới) */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}>
+        <Text style={[styles.h2, { color: colors.text }]}>Giao diện</Text>
+
+        {/* Chế độ Sáng / Tối */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <TouchableOpacity
+            onPress={() => setMode('light')}
+            style={[
+              styles.modeBtn,
+              { borderColor: colors.outline, backgroundColor: settings.mode === 'light' ? colors.primary : colors.card },
+            ]}
+          >
+            <Text style={{ color: settings.mode === 'light' ? colors.onPrimary : colors.text, fontWeight: '800' }}>
+              Sáng
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setMode('dark')}
+            style={[
+              styles.modeBtn,
+              { borderColor: colors.outline, backgroundColor: settings.mode === 'dark' ? colors.primary : colors.card },
+            ]}
+          >
+            <Text style={{ color: settings.mode === 'dark' ? colors.onPrimary : colors.text, fontWeight: '800' }}>
+              Tối
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Màu chủ đạo */}
+        <Text style={[styles.label, { color: colors.subtext, marginTop: spacing.md }]}>Màu chủ đạo</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }}>
+          {PRIMARY_PRESETS.map(preset => {
+            const active = preset.hex.toLowerCase() === settings.primary.toLowerCase();
+            return (
+              <TouchableOpacity
+                key={preset.hex}
+                onPress={() => setPrimary(preset.hex)}
+                style={[
+                  styles.colorChip,
+                  {
+                    borderColor: active ? preset.hex : colors.outline,
+                    backgroundColor: active ? preset.hex : colors.bg,
+                  },
+                ]}
+              >
+                <View style={[styles.colorDot, { backgroundColor: preset.hex }]} />
+                <Text style={{ color: active ? '#FFFFFF' : colors.text, fontWeight: '800' }}>
+                  {preset.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Card: thông tin cá nhân */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}>
         <Text style={[styles.h2, { color: colors.text }]}>Thông tin cá nhân</Text>
 
@@ -228,10 +301,10 @@ export default function ProfileScreen() {
               ]}
             />
 
-            <View style={{ flexDirection: 'row' }}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <TouchableOpacity
                 onPress={() => { setPwOpen(false); setCurrentPw(''); setNewPw(''); }}
-                style={[styles.btnGhost, { borderColor: colors.outline, marginRight: spacing.sm }]}
+                style={[styles.btnGhost, { borderColor: colors.outline }]}
               >
                 <Text style={{ color: colors.text, fontWeight: '800' }}>Huỷ</Text>
               </TouchableOpacity>
@@ -287,6 +360,7 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: radius.lg,
@@ -332,7 +406,26 @@ const styles = StyleSheet.create({
   btnSm: { borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: 8 },
   btnSmText: { fontWeight: '800' },
   btnPrimaryText: { fontWeight: '800' },
-  kpiRow: { flexDirection: 'row', marginTop: spacing.sm },
-  kpi: { flex: 1, borderRadius: radius.lg, padding: spacing.md, marginRight: spacing.sm },
+  kpiRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
+  kpi: { flex: 1, borderRadius: radius.lg, padding: spacing.md },
   kpiValue: { fontSize: 22, fontWeight: '900', marginBottom: 2 },
+
+  // Giao diện
+  modeBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: radius.xl,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  colorChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+  },
+  colorDot: { width: 14, height: 14, borderRadius: 99 },
 });
