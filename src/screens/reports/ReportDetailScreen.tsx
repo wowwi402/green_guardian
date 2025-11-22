@@ -1,88 +1,135 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// src/screens/reports/ReportDetailScreen.tsx
+import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, Platform, Linking, ScrollView } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
+
 import { useAppTheme } from '../../theme/ThemeProvider';
-import { spacing, radius } from '../../theme';
-import { listReports, deleteReport, type Report } from '../../services/reports';
+import { radius, spacing } from '../../theme';
+import { getReport, deleteReport } from '../../services/reports';
+
+type RouteParams = { id: string };
 
 export default function ReportDetailScreen() {
   const { colors } = useAppTheme();
   const nav = useNavigation<any>();
-  const { params } = useRoute<any>();
-  const id: string = params?.id;
+  const route = useRoute<any>();
+  const { id } = (route.params ?? {}) as RouteParams;
 
-  const [r, setR] = useState<Report | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [r, setR] = useState<Awaited<ReturnType<typeof getReport>>>();
 
-  useEffect(() => {
-    (async () => {
-      const all = await listReports();
-      setR(all.find(x => x.id === id) ?? null);
-    })();
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getReport(id);
+      setR(data);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
-  if (!r) {
-    return <View style={{ flex:1, alignItems:'center', justifyContent:'center' }}>
-      <Text>Không tìm thấy báo cáo.</Text>
-    </View>;
+  useLayoutEffect(() => {
+    nav.setOptions({
+      title: 'Chi tiết báo cáo',
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', gap: 12, marginRight: spacing.md }}>
+          {/* Sửa */}
+          <TouchableOpacity
+            onPress={() => nav.navigate('ReportForm', { id })}
+            style={{ padding: 6 }}
+            accessibilityLabel="Sửa báo cáo"
+          >
+            <Ionicons name="create-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+
+          {/* Xoá */}
+          <TouchableOpacity
+            onPress={() => {
+              Alert.alert('Xoá báo cáo', 'Bạn có chắc muốn xoá?', [
+                { text: 'Huỷ' },
+                {
+                  text: 'Xoá',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await deleteReport(id);
+                    Alert.alert('Đã xoá');
+                    nav.goBack();
+                  },
+                },
+              ]);
+            }}
+            style={{ padding: 6 }}
+            accessibilityLabel="Xoá báo cáo"
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [colors.text, id, nav]);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  if (loading || !r) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
+        <Text style={{ color: colors.subtext }}>{loading ? 'Đang tải…' : 'Không tìm thấy báo cáo'}</Text>
+      </View>
+    );
   }
 
-  const openMap = () => {
-    if (r.latitude == null || r.longitude == null) return;
+  const openExternalMap = () => {
+    if (!r.latitude || !r.longitude) return;
     const latLng = `${r.latitude},${r.longitude}`;
-    const label = encodeURIComponent(r.description || 'Báo cáo');
-    if (Platform.OS === 'ios') Linking.openURL(`maps://?q=${label}&ll=${latLng}`);
-    else Linking.openURL(`geo:0,0?q=${latLng}(${label})`);
-  };
-
-  const doDelete = () => {
-    Alert.alert('Xoá báo cáo', 'Bạn chắc muốn xoá?', [
-      { text: 'Huỷ', style: 'cancel' },
-      { text: 'Xoá', style: 'destructive', onPress: async () => {
-        await deleteReport(r.id);
-        nav.goBack();
-      } },
-    ]);
+    if (Platform.OS === 'ios') Linking.openURL(`maps://?q=${encodeURIComponent('Vị trí báo cáo')}&ll=${latLng}`);
+    else Linking.openURL(`geo:0,0?q=${latLng}(Vị trí báo cáo)`);
   };
 
   return (
-    <View style={[styles.wrap, { backgroundColor: colors.bg }]}>
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}>
-        <Text style={[styles.title, { color: colors.text }]}>{r.description || r.category.toUpperCase()}</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }}>
+      {!!r.photoUri && (
+        <Image
+          source={{ uri: r.photoUri }}
+          style={{ width: '100%', height: 260, backgroundColor: colors.card }}
+          resizeMode="cover"
+        />
+      )}
+
+      <View style={{ padding: spacing.xl, gap: spacing.md }}>
+        <View style={[styles.badge, { backgroundColor: colors.card, borderColor: colors.outline }]}>
+          <Ionicons name="pricetag-outline" size={16} color={colors.text} />
+          <Text style={{ color: colors.text, fontWeight: '800', marginLeft: 6 }}>
+            {r.category.toUpperCase()}
+          </Text>
+        </View>
+
+        <Text style={{ color: colors.text, fontWeight: '900', fontSize: 18 }}>
+          {r.description || '(Không mô tả)'}
+        </Text>
+
         <Text style={{ color: colors.subtext }}>
-          {new Date(r.createdAt).toLocaleString()} • {r.category.toUpperCase()}
+          {new Date(r.createdAt).toLocaleString()}
         </Text>
 
         {!!r.latitude && !!r.longitude && (
-          <Text style={{ color: colors.subtext, marginTop: spacing.sm }}>
-            Tọa độ: {r.latitude.toFixed(5)}, {r.longitude.toFixed(5)}
-          </Text>
-        )}
-
-        <View style={{ height: spacing.md }} />
-
-        <TouchableOpacity style={[styles.btn, { backgroundColor: colors.primary }]}
-          onPress={() => nav.navigate('ReportForm', { id: r.id })}
-        >
-          <Text style={{ color: colors.onPrimary, fontWeight: '800' }}>Sửa báo cáo</Text>
-        </TouchableOpacity>
-
-        {!!r.latitude && !!r.longitude && (
-          <TouchableOpacity style={[styles.btn, { borderColor: colors.outline, borderWidth: 1 }]} onPress={openMap}>
-            <Text style={{ color: colors.text, fontWeight: '800' }}>Mở trên Bản đồ</Text>
+          <TouchableOpacity
+            onPress={openExternalMap}
+            style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.outline }]}
+          >
+            <Ionicons name="navigate-outline" size={18} color={colors.text} />
+            <Text style={{ color: colors.text, fontWeight: '800', marginLeft: 8 }}>
+              Xem chỉ đường ({r.latitude.toFixed(5)}, {r.longitude.toFixed(5)})
+            </Text>
           </TouchableOpacity>
         )}
-
-        <TouchableOpacity style={[styles.btn, { backgroundColor: '#E11D48' }]} onPress={doDelete}>
-          <Text style={{ color: '#fff', fontWeight: '800' }}>Xoá</Text>
-        </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, padding: spacing.xl },
-  card: { borderWidth: 1, borderRadius: radius.xl, padding: spacing.lg },
-  title: { fontSize: 18, fontWeight: '900', marginBottom: 6 },
-  btn: { borderRadius: radius.xl, paddingVertical: 12, alignItems: 'center', marginTop: spacing.md },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center' },
+  btn: { borderWidth: 1, borderRadius: radius.xl, paddingVertical: 12, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center' },
 });
