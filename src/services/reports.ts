@@ -1,4 +1,4 @@
-// src/services/report.ts
+// src/services/reports.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { auth } from './firebase';
@@ -253,4 +253,8 @@ export async function updateReport(
   list[idx] = updated;
   await saveReports(list);
   return updated;
+}
+
+export async function removeReport(id: string) {
+  return deleteReport(id);
 }

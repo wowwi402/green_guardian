@@ -1,23 +1,23 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MyReportsScreen from '../screens/reports/MyReportsScreen';
-import ReportCreateScreen from '../screens/reports/ReportCreateScreen';
 import ReportDetailScreen from '../screens/reports/ReportDetailScreen';
+import ReportFormScreen from '../screens/reports/ReportFormScreen';
 
-export type ReportsParamList = {
+export type ReportsStackParamList = {
   MyReports: undefined;
-  ReportCreate: undefined;
   ReportDetail: { id: string };
+  ReportForm: { id: string } | { draft?: true };   // dùng cho sửa hoặc tạo mới
 };
 
-const Stack = createNativeStackNavigator<ReportsParamList>();
+const Stack = createNativeStackNavigator<ReportsStackParamList>();
 
 export default function ReportsStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true, headerTitleAlign: 'center' }}>
+    <Stack.Navigator>
       <Stack.Screen name="MyReports" component={MyReportsScreen} options={{ title: 'Báo cáo của tôi' }} />
-      <Stack.Screen name="ReportCreate" component={ReportCreateScreen} options={{ title: 'Tạo báo cáo' }} />
       <Stack.Screen name="ReportDetail" component={ReportDetailScreen} options={{ title: 'Chi tiết báo cáo' }} />
+      <Stack.Screen name="ReportForm" component={ReportFormScreen} options={{ title: 'Sửa báo cáo' }} />
     </Stack.Navigator>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -22,7 +22,7 @@ import { auth } from '../services/firebase';
 import { listReports } from '../services/reports';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { spacing, radius } from '../theme';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 // Bảng màu cảnh báo/nguy hiểm (fallback độc lập theme)
 const useLocalPalette = (colors: any) => ({
@@ -52,7 +52,6 @@ export default function ProfileScreen() {
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? '');
   const [savingName, setSavingName] = useState(false);
-
   const [verifySending, setVerifySending] = useState(false);
 
   const [pwOpen, setPwOpen] = useState(false);
@@ -62,18 +61,21 @@ export default function ProfileScreen() {
 
   const [reportCount, setReportCount] = useState<number | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const data = await listReports();
-        if (mounted) setReportCount(data.length);
-      } catch {
-        if (mounted) setReportCount(0);
-      }
-    })();
-    return () => { mounted = false; };
+  // ---- load lại số lượng báo cáo ----
+  const refreshCount = useCallback(async () => {
+    try {
+      const data = await listReports();
+      setReportCount(data.length);
+    } catch {
+      setReportCount(0);
+    }
   }, []);
+
+  // chạy 1 lần khi mount
+  useEffect(() => { refreshCount(); }, [refreshCount]);
+
+  // chạy MỖI KHI màn hình hồ sơ được focus (quay lại từ nơi khác)
+  useFocusEffect(useCallback(() => { refreshCount(); }, [refreshCount]));
 
   const email = user?.email ?? '';
   const verified = !!user?.emailVerified;
@@ -154,7 +156,6 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={[styles.wrap, { backgroundColor: bgColor }]}>
-
       {/* Card: tài khoản */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}>
         <Text style={[styles.h1, { color: colors.text }]}>{greeting}</Text>
@@ -176,7 +177,7 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* Card: GIAO DIỆN (mới) */}
+      {/* Card: GIAO DIỆN */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}>
         <Text style={[styles.h2, { color: colors.text }]}>Giao diện</Text>
 
@@ -323,15 +324,25 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* Card: thống kê */}
+      {/* Card: thống kê + nút quản lý */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.outline }]}>
         <Text style={[styles.h2, { color: colors.text }]}>Thống kê</Text>
-        <View style={styles.kpiRow}>
-          <View style={[styles.kpi, { backgroundColor: colors.bg }]}>
-            <Text style={[styles.kpiValue, { color: colors.text }]}>{reportCount ?? '—'}</Text>
-            <Text style={{ color: colors.subtext }}>Báo cáo của tôi</Text>
-          </View>
-        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => nav.navigate('Reports' as never)}
+          style={[styles.kpi, { backgroundColor: colors.bg }]}
+        >
+          <Text style={[styles.kpiValue, { color: colors.text }]}>{reportCount ?? '—'}</Text>
+          <Text style={{ color: colors.subtext }}>Báo cáo của tôi (chạm để quản lý)</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.btnPrimary, { backgroundColor: colors.primary }]}
+          onPress={() => nav.navigate('Reports' as never)}
+        >
+          <Text style={[styles.btnPrimaryText, { color: colors.onPrimary }]}>Quản lý báo cáo</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Card: đăng xuất */}
@@ -406,8 +417,14 @@ const styles = StyleSheet.create({
   btnSm: { borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: 8 },
   btnSmText: { fontWeight: '800' },
   btnPrimaryText: { fontWeight: '800' },
-  kpiRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
-  kpi: { flex: 1, borderRadius: radius.lg, padding: spacing.md },
+
+  // KPI
+  kpi: {
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginTop: spacing.sm,
+    alignItems: 'center',
+  },
   kpiValue: { fontSize: 22, fontWeight: '900', marginBottom: 2 },
 
   // Giao diện
